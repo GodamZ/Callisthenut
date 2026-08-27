@@ -47,10 +47,10 @@ const PROGRAM = [
 ];
 const DAY_NAMES=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const state=loadState();
-let session=null,timerId=null,reminderId=null;
+let session=null,timerId=null,reminderId=null,audioContext=null;
 
 function loadState(){
-  const base={name:'soldat',duration:15,level:1,weight:70,reminder:'18:30',goals:{},history:[]};
+  const base={name:'soldat',duration:15,level:1,weight:70,reminder:'18:30',sound:true,goals:{},history:[]};
   try{return {...base,...JSON.parse(localStorage.getItem('callisthenut-state')||localStorage.getItem('callisterik-state')||'{}')}}catch{return base}
 }
 function saveState(){localStorage.setItem('callisthenut-state',JSON.stringify(state))}
@@ -115,21 +115,28 @@ function getStreak(){let n=0,d=new Date();if(!state.history.some(h=>h.date===dat
 function fillSettings(){nameInput.value=state.name==='soldat'?'':state.name;durationSelect.value=state.duration;levelSelect.value=state.level;weightInput.value=state.weight;reminderTime.value=state.reminder}
 function buildTimeline(){
   const p=todayProgram(),work=state.duration===20?60:45,rest=state.duration===20?20:15;
-  return p.ids.flatMap((id,i)=>[{type:'work',seconds:work,exercise:EXERCISES[id],index:i},...(i<p.ids.length-1?[{type:'rest',seconds:rest,exercise:EXERCISES[p.ids[i+1]],index:i}]:[])]);
+  return [{type:'prep',seconds:10,exercise:EXERCISES[p.ids[0]],index:-1},...p.ids.flatMap((id,i)=>[{type:'work',seconds:work,exercise:EXERCISES[id],index:i},...(i<p.ids.length-1?[{type:'rest',seconds:rest,exercise:EXERCISES[p.ids[i+1]],index:i}]:[])])];
 }
-function startWorkout(){session={timeline:buildTimeline(),position:0,remaining:0,running:true,elapsed:0};loadPhase();workoutPlayer.showModal();timerId=setInterval(tick,1000)}
+function prepareAudio(){if(!audioContext)audioContext=new (window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume()}
+function beep(){
+  if(!state.sound||!audioContext)return;
+  const oscillator=audioContext.createOscillator(),gain=audioContext.createGain(),now=audioContext.currentTime;
+  oscillator.type='sine';oscillator.frequency.setValueAtTime(880,now);gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.22,now+.015);gain.gain.exponentialRampToValueAtTime(.0001,now+.16);oscillator.connect(gain);gain.connect(audioContext.destination);oscillator.start(now);oscillator.stop(now+.18);
+}
+function updateSoundButton(){const button=document.querySelector('#soundToggle');button.textContent=state.sound?'♪':'♩';button.classList.toggle('sound-off',!state.sound);button.setAttribute('aria-label',state.sound?'Couper les signaux sonores':'Activer les signaux sonores')}
+function startWorkout(){prepareAudio();session={timeline:buildTimeline(),position:0,remaining:0,running:true,elapsed:0};loadPhase();workoutPlayer.showModal();timerId=setInterval(tick,1000)}
 function loadPhase(){const phase=session.timeline[session.position];session.remaining=phase.seconds;updatePlayer()}
-function tick(){if(!session?.running)return;if(session.remaining>0){session.remaining--;session.elapsed++;updatePlayer()}else advance(1)}
+function tick(){if(!session?.running)return;const phase=session.timeline[session.position];if(session.remaining>1){session.remaining--;if(session.remaining<=3)beep();if(phase.type!=='prep')session.elapsed++;updatePlayer()}else{if(phase.type!=='prep')session.elapsed++;advance(1)}}
 function advance(delta){const next=session.position+delta;if(next<0)return;if(next>=session.timeline.length){finishWorkout();return}session.position=next;loadPhase()}
 function updatePlayer(){
-  const p=session.timeline[session.position],isRest=p.type==='rest';
-  playerPhase.textContent=isRest?'RÉCUPÉRATION':'AU TRAVAIL';playerStep.textContent=isRest?'PROCHAIN EXERCICE':`EXERCICE ${p.index+1} SUR 12`;
-  exerciseCategory.textContent=isRest?'RESPIRE & PRÉPARE-TOI':p.exercise.cat;exerciseName.textContent=isRest?`Ensuite : ${p.exercise.name}`:p.exercise.name;
+  const p=session.timeline[session.position],isRest=p.type==='rest',isPrep=p.type==='prep';
+  playerPhase.textContent=isPrep?'DÉPART IMMINENT':isRest?'RÉCUPÉRATION':'AU TRAVAIL';playerStep.textContent=isPrep?'LA SÉANCE VA COMMENCER':isRest?'PROCHAIN EXERCICE':`EXERCICE ${p.index+1} SUR 12`;
+  exerciseCategory.textContent=isPrep?'PRÉPARE-TOI':isRest?'RESPIRE & PRÉPARE-TOI':p.exercise.cat;exerciseName.textContent=isPrep?`Premier : ${p.exercise.name}`:isRest?`Ensuite : ${p.exercise.name}`:p.exercise.name;
   exerciseFigure.innerHTML=svg(p.exercise.pose);exerciseTip.textContent=isRest?'Marche sur place, relâche les épaules et reprends ton souffle.':p.exercise.tip;
-  movementSteps.innerHTML=(isRest?['Marche doucement sur place.','Inspire par le nez et expire lentement.','Observe le prochain mouvement et prépare ta position.']:INSTRUCTIONS[p.exercise.pose]).map(step=>`<li>${step}</li>`).join('');
+  movementSteps.innerHTML=((isRest||isPrep)?['Marche doucement sur place.','Inspire par le nez et expire lentement.','Observe le prochain mouvement et prépare ta position.']:INSTRUCTIONS[p.exercise.pose]).map(step=>`<li>${step}</li>`).join('');
   timerDisplay.textContent=`${String(Math.floor(session.remaining/60)).padStart(2,'0')}:${String(session.remaining%60).padStart(2,'0')}`;
   timerRing.style.setProperty('--progress',`${Math.max(0,session.remaining/p.seconds)*360}deg`);
-  timerCaption.textContent=isRest?'RÉCUPÉRATION':'TEMPS RESTANT';
+  timerCaption.textContent=isPrep?'AVANT LE DÉPART':isRest?'RÉCUPÉRATION':'TEMPS RESTANT';
   liveCalories.textContent=Math.round(todayProgram().met*3.5*state.weight/200*(session.elapsed/60));
   playerProgress.style.width=`${((session.position+(1-session.remaining/p.seconds))/session.timeline.length)*100}%`;
   pauseLabel.textContent=session.running?'Pause':'Reprendre';pauseTimer.querySelector('.pause-symbol').textContent=session.running?'Ⅱ':'▶';pauseTimer.classList.toggle('paused',!session.running);
@@ -156,7 +163,7 @@ document.querySelector('#closePlayer').addEventListener('click',closeWorkout);
 document.querySelector('#nextExercise').addEventListener('click',()=>advance(1));
 document.querySelector('#previousExercise').addEventListener('click',()=>advance(-1));
 document.querySelector('#pauseTimer').addEventListener('click',()=>{session.running=!session.running;updatePlayer()});
-document.querySelector('#soundToggle').addEventListener('click',()=>toast('Les signaux sonores seront ajoutés à la prochaine version.'));
+document.querySelector('#soundToggle').addEventListener('click',()=>{prepareAudio();state.sound=!state.sound;saveState();updateSoundButton();if(state.sound){beep();toast('Signaux sonores activés')}else toast('Signaux sonores coupés')});
 document.querySelector('#settingsButton').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());
 document.querySelector('#openPreferences').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());
 document.querySelector('#openReminder').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());
@@ -165,4 +172,4 @@ document.querySelector('#enableNotifications').addEventListener('click',async()=
 document.querySelector('#saveSettings').addEventListener('click',()=>{state.name=nameInput.value.trim()||'soldat';state.duration=Number(durationSelect.value);state.level=Number(levelSelect.value);state.weight=Math.min(250,Math.max(35,Number(weightInput.value)||70));state.reminder=reminderTime.value;saveState();scheduleReminder();render();toast('Réglages enregistrés')});
 window.addEventListener('keydown',e=>{if(e.code==='Space'&&session){e.preventDefault();session.running=!session.running;updatePlayer()}});
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-render();scheduleReminder();
+render();updateSoundButton();scheduleReminder();
