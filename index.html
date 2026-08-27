@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111411">
+  <meta name="description" content="Routine quotidienne de callisthénie guidée en 15 à 20 minutes.">
+  <title>Callisthenut</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#today" aria-label="Callisthenut, accueil"><span class="brand-mark">C</span><span>CALLISTHENUT</span></a>
+      <button class="icon-button" id="settingsButton" aria-label="Ouvrir les réglages">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.42 1.42-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20h-2v-.08a1.7 1.7 0 0 0-1.1-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06-1.42-1.42.06-.06A1.7 1.7 0 0 0 9.36 15a1.7 1.7 0 0 0-1.56-1.03H7.7v-2h.1a1.7 1.7 0 0 0 1.56-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06 1.42-1.42.06.06a1.7 1.7 0 0 0 1.88.34 1.7 1.7 0 0 0 1.03-1.56V6.3h2v.08a1.7 1.7 0 0 0 1.1 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06L19.8 8.96l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03h.08v2h-.08A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+      </button>
+    </header>
+
+    <main id="app" tabindex="-1">
+      <section class="view active" id="todayView" data-view="today">
+        <div class="hero">
+          <div>
+            <p class="eyebrow" id="todayDate"></p>
+            <h1>Bonjour <span id="userName">soldat</span>.</h1>
+            <p class="hero-copy">Un peu chaque jour. Fort pour longtemps.</p>
+          </div>
+          <div class="streak-card" aria-label="Série en cours"><span class="streak-icon">✦</span><strong id="streakCount">0</strong><small>jours</small></div>
+        </div>
+
+        <section class="workout-card" id="todayWorkout">
+          <div class="workout-visual" id="heroVisual"></div>
+          <div class="workout-overlay">
+            <div class="tags"><span id="workoutFocus">CORPS ENTIER</span><span id="workoutLevel">NIVEAU 1</span></div>
+            <div>
+              <p class="eyebrow light">MISSION DU JOUR</p>
+              <h2 id="workoutTitle">Fondations</h2>
+              <p id="workoutMeta">15 min · 12 exercices · ≈ 100 kcal</p>
+            </div>
+            <button class="primary-button" id="startWorkout"><span>Commencer</span><span class="play">▶</span></button>
+          </div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-heading"><div><p class="eyebrow">OBJECTIFS DU JOUR</p><h2>Rester en mouvement</h2></div><span class="score" id="goalScore">0/3</span></div>
+          <div class="goal-list" id="goalList"></div>
+        </section>
+
+        <section class="quote-card"><span>“</span><p>La discipline, c'est choisir entre ce que tu veux maintenant et ce que tu veux le plus.</p></section>
+      </section>
+
+      <section class="view" id="planView" data-view="plan">
+        <div class="page-heading"><p class="eyebrow">PROGRAMME</p><h1>Ta semaine</h1><p>Une progression équilibrée, pensée pour bouger chaque jour.</p></div>
+        <div class="week-strip" id="weekStrip"></div>
+        <div class="plan-list" id="planList"></div>
+      </section>
+
+      <section class="view" id="progressView" data-view="progress">
+        <div class="page-heading"><p class="eyebrow">PROGRESSION</p><h1>Les efforts s'additionnent.</h1><p>Tout est enregistré uniquement sur cet appareil.</p></div>
+        <div class="stat-grid">
+          <article class="stat-card dark"><small>SÉRIE ACTUELLE</small><strong><span id="progressStreak">0</span> j</strong><p>Continue demain.</p></article>
+          <article class="stat-card"><small>SÉANCES</small><strong id="totalSessions">0</strong><p>terminées</p></article>
+          <article class="stat-card"><small>MINUTES</small><strong id="totalMinutes">0</strong><p>en mouvement</p></article>
+          <article class="stat-card"><small>ÉNERGIE ESTIMÉE</small><strong id="totalCalories">0</strong><p>kcal brûlées</p></article>
+        </div>
+        <section class="section-block"><div class="section-heading"><div><p class="eyebrow">4 DERNIÈRES SEMAINES</p><h2>Régularité</h2></div></div><div class="activity-grid" id="activityGrid"></div></section>
+        <section class="section-block"><div class="section-heading"><div><p class="eyebrow">DERNIÈRES MISSIONS</p><h2>Historique</h2></div></div><div class="history-list" id="historyList"></div></section>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Navigation principale">
+      <button class="nav-item active" data-target="today"><svg viewBox="0 0 24 24"><path d="m4 11 8-7 8 7v9h-6v-6h-4v6H4Z"/></svg><span>Aujourd'hui</span></button>
+      <button class="nav-item" data-target="plan"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span>Planning</span></button>
+      <button class="nav-item" data-target="progress"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Progrès</span></button>
+    </nav>
+  </div>
+
+  <dialog class="workout-player" id="workoutPlayer">
+    <div class="player-shell">
+      <header class="player-header"><button class="icon-button ghost" id="closePlayer" aria-label="Quitter la séance">×</button><div><small id="playerStep">EXERCICE 1 SUR 8</small><strong id="playerPhase">AU TRAVAIL</strong></div><button class="icon-button ghost" id="soundToggle" aria-label="Activer ou couper le son">♪</button></header>
+      <div class="player-progress"><i id="playerProgress"></i></div>
+      <div class="player-content">
+        <p class="eyebrow" id="exerciseCategory">JAMBES</p>
+        <h2 id="exerciseName">Squats</h2>
+        <div class="exercise-figure" id="exerciseFigure"></div>
+        <div class="timer" id="timerDisplay">00:40</div>
+        <div class="live-calories"><span>≈</span> <strong id="liveCalories">0</strong> kcal</div>
+        <p class="exercise-tip" id="exerciseTip">Garde le dos droit et pousse les genoux vers l'extérieur.</p>
+      </div>
+      <footer class="player-controls"><button class="control-button" id="previousExercise" aria-label="Exercice précédent">‹</button><button class="pause-button" id="pauseTimer">Mettre en pause</button><button class="control-button" id="nextExercise" aria-label="Exercice suivant">›</button></footer>
+    </div>
+  </dialog>
+
+  <dialog class="settings-panel" id="settingsPanel">
+    <form method="dialog" class="settings-content">
+      <div class="modal-heading"><div><p class="eyebrow">PERSONNALISATION</p><h2>Réglages</h2></div><button class="icon-button" value="cancel" aria-label="Fermer">×</button></div>
+      <label>Ton prénom<input id="nameInput" maxlength="20" placeholder="Soldat"></label>
+      <label>Durée des séances<select id="durationSelect"><option value="15">15 minutes</option><option value="20">20 minutes</option></select></label>
+      <label>Ton poids (pour estimer les calories)<input type="number" id="weightInput" min="35" max="250" step="1" inputmode="decimal" value="70"><small class="field-help">L’estimation reste indicative et varie selon l’intensité réelle.</small></label>
+      <label>Niveau<select id="levelSelect"><option value="1">Débutant</option><option value="2">Intermédiaire</option><option value="3">Avancé</option></select></label>
+      <div class="setting-row"><div><strong>Rappel quotidien</strong><small id="notificationStatus">Autorise les notifications du navigateur</small></div><button type="button" class="secondary-button" id="enableNotifications">Activer</button></div>
+      <label>Heure du rappel<input type="time" id="reminderTime" value="18:30"></label>
+      <button class="primary-button save-settings" id="saveSettings" value="default">Enregistrer</button>
+    </form>
+  </dialog>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
