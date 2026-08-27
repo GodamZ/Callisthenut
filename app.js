@@ -131,13 +131,18 @@ function toast(msg){const el=document.querySelector('#toast');el.textContent=msg
 function navigateTo(target){document.querySelectorAll('.nav-item,.view').forEach(x=>x.classList.remove('active'));document.querySelector(`.nav-item[data-target="${target}"]`).classList.add('active');document.querySelector(`[data-view="${target}"]`).classList.add('active');scrollTo({top:0,behavior:'smooth'})}
 document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>navigateTo(b.dataset.target)));
 document.querySelector('#goalList').addEventListener('click',e=>{const item=e.target.closest('[data-goal]');if(!item)return;const goals=new Set(state.goals[dateKey()]||[]);goals.has(item.dataset.goal)?goals.delete(item.dataset.goal):goals.add(item.dataset.goal);state.goals[dateKey()]=[...goals];saveState();render()});
-startWorkout.addEventListener('click',startWorkout);closePlayer.addEventListener('click',closeWorkout);nextExercise.addEventListener('click',()=>advance(1));previousExercise.addEventListener('click',()=>advance(-1));pauseTimer.addEventListener('click',()=>{session.running=!session.running;updatePlayer()});
-soundToggle.addEventListener('click',()=>toast('Les signaux sonores seront ajoutés à la prochaine version.'));
-settingsButton.addEventListener('click',()=>settingsPanel.showModal());
-openPreferences.addEventListener('click',()=>settingsPanel.showModal());openReminder.addEventListener('click',()=>settingsPanel.showModal());
-closeFinish.addEventListener('click',()=>{finishScreen.close();navigateTo('today')});
-enableNotifications.addEventListener('click',async()=>{if(!('Notification'in window)){notificationStatus.textContent='Non disponible dans ce navigateur';return}const result=await Notification.requestPermission();notificationStatus.textContent=result==='granted'?'Rappel actif lorsque l’app est ouverte':'Notifications refusées';if(result==='granted')scheduleReminder()});
-saveSettings.addEventListener('click',()=>{state.name=nameInput.value.trim()||'soldat';state.duration=Number(durationSelect.value);state.level=Number(levelSelect.value);state.weight=Math.min(250,Math.max(35,Number(weightInput.value)||70));state.reminder=reminderTime.value;saveState();scheduleReminder();render();toast('Réglages enregistrés')});
+document.querySelector('#startWorkout').addEventListener('click',startWorkout);
+document.querySelector('#closePlayer').addEventListener('click',closeWorkout);
+document.querySelector('#nextExercise').addEventListener('click',()=>advance(1));
+document.querySelector('#previousExercise').addEventListener('click',()=>advance(-1));
+document.querySelector('#pauseTimer').addEventListener('click',()=>{session.running=!session.running;updatePlayer()});
+document.querySelector('#soundToggle').addEventListener('click',()=>toast('Les signaux sonores seront ajoutés à la prochaine version.'));
+document.querySelector('#settingsButton').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());
+document.querySelector('#openPreferences').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());
+document.querySelector('#openReminder').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());
+document.querySelector('#closeFinish').addEventListener('click',()=>{document.querySelector('#finishScreen').close();navigateTo('today')});
+document.querySelector('#enableNotifications').addEventListener('click',async()=>{if(!('Notification'in window)){notificationStatus.textContent='Non disponible dans ce navigateur';return}const result=await Notification.requestPermission();notificationStatus.textContent=result==='granted'?'Rappel actif lorsque l’app est ouverte':'Notifications refusées';if(result==='granted')scheduleReminder()});
+document.querySelector('#saveSettings').addEventListener('click',()=>{state.name=nameInput.value.trim()||'soldat';state.duration=Number(durationSelect.value);state.level=Number(levelSelect.value);state.weight=Math.min(250,Math.max(35,Number(weightInput.value)||70));state.reminder=reminderTime.value;saveState();scheduleReminder();render();toast('Réglages enregistrés')});
 window.addEventListener('keydown',e=>{if(e.code==='Space'&&session){e.preventDefault();session.running=!session.running;updatePlayer()}});
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 render();scheduleReminder();
