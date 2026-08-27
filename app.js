@@ -69,6 +69,10 @@ function render(){
   document.querySelector('#workoutMeta').textContent=`${state.duration} min · 12 exercices · ≈ ${estimatedCalories(program)} kcal`;
   document.querySelector('#heroVisual').innerHTML=svg(program.ids[1]);
   const streak=getStreak();document.querySelector('#streakCount').textContent=streak;document.querySelector('#progressStreak').textContent=streak;
+  document.querySelector('#menuName').textContent=state.name==='soldat'?'Soldat':state.name;
+  document.querySelector('#menuLevel').textContent=['','Débutant','Intermédiaire','Avancé'][state.level];
+  document.querySelector('#menuDuration').textContent=state.duration;
+  document.querySelector('#menuReminder').textContent=`Tous les jours à ${state.reminder}`;
   const goals=[['workout','◎','Terminer la mission',`${state.duration} minutes de callisthénie`],['water','◇','Boire suffisamment','Objectif personnel : 6 à 8 verres'],['walk','↗','Bouger en plus','10 minutes de marche active']];
   document.querySelector('#goalList').innerHTML=goals.map(g=>`<button class="goal-item ${doneGoals.includes(g[0])?'done':''}" data-goal="${g[0]}"><span class="goal-check"></span><span class="goal-icon">${g[1]}</span><span class="goal-text"><strong>${g[2]}</strong><small>${g[3]}</small></span></button>`).join('');
   document.querySelector('#goalScore').textContent=`${doneGoals.length}/3`;
@@ -104,14 +108,17 @@ function updatePlayer(){
   exerciseCategory.textContent=isRest?'RESPIRE & PRÉPARE-TOI':p.exercise.cat;exerciseName.textContent=isRest?`Ensuite : ${p.exercise.name}`:p.exercise.name;
   exerciseFigure.innerHTML=svg(p.exercise.pose);exerciseTip.textContent=isRest?'Marche sur place, relâche les épaules et reprends ton souffle.':p.exercise.tip;
   timerDisplay.textContent=`${String(Math.floor(session.remaining/60)).padStart(2,'0')}:${String(session.remaining%60).padStart(2,'0')}`;
+  timerRing.style.setProperty('--progress',`${Math.max(0,session.remaining/p.seconds)*360}deg`);
+  timerCaption.textContent=isRest?'RÉCUPÉRATION':'TEMPS RESTANT';
   liveCalories.textContent=Math.round(todayProgram().met*3.5*state.weight/200*(session.elapsed/60));
   playerProgress.style.width=`${((session.position+(1-session.remaining/p.seconds))/session.timeline.length)*100}%`;
   pauseTimer.textContent=session.running?'Mettre en pause':'Reprendre la séance';pauseTimer.classList.toggle('paused',!session.running);
   document.title=`${session.remaining}s · ${p.exercise.name} — Callisthenut`;
 }
 function finishWorkout(){
-  clearInterval(timerId);const p=todayProgram();if(!state.history.some(h=>h.date===dateKey()))state.history.push({date:dateKey(),title:p.title,minutes:Number(state.duration),calories:estimatedCalories(p)});
-  const goals=new Set(state.goals[dateKey()]||[]);goals.add('workout');state.goals[dateKey()]=[...goals];saveState();session=null;workoutPlayer.close();document.title='Callisthenut';render();toast('Mission accomplie. Bien joué !');
+  clearInterval(timerId);const p=todayProgram(),calories=estimatedCalories(p);if(!state.history.some(h=>h.date===dateKey()))state.history.push({date:dateKey(),title:p.title,minutes:Number(state.duration),calories});
+  const goals=new Set(state.goals[dateKey()]||[]);goals.add('workout');state.goals[dateKey()]=[...goals];saveState();session=null;workoutPlayer.close();document.title='Callisthenut';render();
+  finishMinutes.textContent=state.duration;finishCalories.textContent=calories;finishExercises.textContent=p.ids.length;finishScreen.showModal();
 }
 function closeWorkout(){clearInterval(timerId);session=null;workoutPlayer.close();document.title='Callisthenut'}
 function scheduleReminder(){
@@ -121,11 +128,14 @@ function scheduleReminder(){
 }
 function toast(msg){const el=document.querySelector('#toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2600)}
 
-document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.nav-item,.view').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelector(`[data-view="${b.dataset.target}"]`).classList.add('active');scrollTo({top:0,behavior:'smooth'})}));
+function navigateTo(target){document.querySelectorAll('.nav-item,.view').forEach(x=>x.classList.remove('active'));document.querySelector(`.nav-item[data-target="${target}"]`).classList.add('active');document.querySelector(`[data-view="${target}"]`).classList.add('active');scrollTo({top:0,behavior:'smooth'})}
+document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>navigateTo(b.dataset.target)));
 document.querySelector('#goalList').addEventListener('click',e=>{const item=e.target.closest('[data-goal]');if(!item)return;const goals=new Set(state.goals[dateKey()]||[]);goals.has(item.dataset.goal)?goals.delete(item.dataset.goal):goals.add(item.dataset.goal);state.goals[dateKey()]=[...goals];saveState();render()});
 startWorkout.addEventListener('click',startWorkout);closePlayer.addEventListener('click',closeWorkout);nextExercise.addEventListener('click',()=>advance(1));previousExercise.addEventListener('click',()=>advance(-1));pauseTimer.addEventListener('click',()=>{session.running=!session.running;updatePlayer()});
 soundToggle.addEventListener('click',()=>toast('Les signaux sonores seront ajoutés à la prochaine version.'));
 settingsButton.addEventListener('click',()=>settingsPanel.showModal());
+openPreferences.addEventListener('click',()=>settingsPanel.showModal());openReminder.addEventListener('click',()=>settingsPanel.showModal());
+closeFinish.addEventListener('click',()=>{finishScreen.close();navigateTo('today')});
 enableNotifications.addEventListener('click',async()=>{if(!('Notification'in window)){notificationStatus.textContent='Non disponible dans ce navigateur';return}const result=await Notification.requestPermission();notificationStatus.textContent=result==='granted'?'Rappel actif lorsque l’app est ouverte':'Notifications refusées';if(result==='granted')scheduleReminder()});
 saveSettings.addEventListener('click',()=>{state.name=nameInput.value.trim()||'soldat';state.duration=Number(durationSelect.value);state.level=Number(levelSelect.value);state.weight=Math.min(250,Math.max(35,Number(weightInput.value)||70));state.reminder=reminderTime.value;saveState();scheduleReminder();render();toast('Réglages enregistrés')});
 window.addEventListener('keydown',e=>{if(e.code==='Space'&&session){e.preventDefault();session.running=!session.running;updatePlayer()}});

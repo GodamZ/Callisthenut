@@ -8,7 +8,7 @@
   <title>Callisthenut</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
   <div class="app-shell">
@@ -68,12 +68,26 @@
         <section class="section-block"><div class="section-heading"><div><p class="eyebrow">4 DERNIÈRES SEMAINES</p><h2>Régularité</h2></div></div><div class="activity-grid" id="activityGrid"></div></section>
         <section class="section-block"><div class="section-heading"><div><p class="eyebrow">DERNIÈRES MISSIONS</p><h2>Historique</h2></div></div><div class="history-list" id="historyList"></div></section>
       </section>
+
+      <section class="view" id="menuView" data-view="menu">
+        <div class="page-heading"><p class="eyebrow">MON ESPACE</p><h1>Menu</h1><p>Personnalise ton entraînement et retrouve les informations de l’application.</p></div>
+        <div class="profile-card">
+          <div class="profile-avatar">C</div>
+          <div><small>PROFIL</small><h2 id="menuName">Soldat</h2><p><span id="menuLevel">Débutant</span> · séances de <span id="menuDuration">15</span> min</p></div>
+        </div>
+        <div class="menu-list">
+          <button class="menu-row" id="openPreferences"><span class="menu-row-icon">⚙</span><span><strong>Préférences</strong><small>Prénom, niveau, durée et poids</small></span><b>›</b></button>
+          <button class="menu-row" id="openReminder"><span class="menu-row-icon">◷</span><span><strong>Rappel quotidien</strong><small id="menuReminder">Tous les jours à 18:30</small></span><b>›</b></button>
+          <article class="menu-note"><strong>À propos des calories</strong><p>Les calories sont une estimation fondée sur ton poids, la durée et l’intensité moyenne de la séance. Elles peuvent différer de la dépense réelle.</p></article>
+        </div>
+      </section>
     </main>
 
     <nav class="bottom-nav" aria-label="Navigation principale">
       <button class="nav-item active" data-target="today"><svg viewBox="0 0 24 24"><path d="m4 11 8-7 8 7v9h-6v-6h-4v6H4Z"/></svg><span>Aujourd'hui</span></button>
       <button class="nav-item" data-target="plan"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span>Planning</span></button>
       <button class="nav-item" data-target="progress"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Progrès</span></button>
+      <button class="nav-item" data-target="menu"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg><span>Menu</span></button>
     </nav>
   </div>
 
@@ -85,11 +99,26 @@
         <p class="eyebrow" id="exerciseCategory">JAMBES</p>
         <h2 id="exerciseName">Squats</h2>
         <div class="exercise-figure" id="exerciseFigure"></div>
-        <div class="timer" id="timerDisplay">00:40</div>
-        <div class="live-calories"><span>≈</span> <strong id="liveCalories">0</strong> kcal</div>
+        <div class="timer-ring" id="timerRing"><div><span class="timer" id="timerDisplay">00:40</span><small id="timerCaption">TEMPS RESTANT</small></div></div>
+        <div class="live-calories"><span>≈</span> <strong id="liveCalories">0</strong> kcal dépensées</div>
         <p class="exercise-tip" id="exerciseTip">Garde le dos droit et pousse les genoux vers l'extérieur.</p>
       </div>
       <footer class="player-controls"><button class="control-button" id="previousExercise" aria-label="Exercice précédent">‹</button><button class="pause-button" id="pauseTimer">Mettre en pause</button><button class="control-button" id="nextExercise" aria-label="Exercice suivant">›</button></footer>
+    </div>
+  </dialog>
+
+  <dialog class="finish-screen" id="finishScreen">
+    <div class="finish-content">
+      <div class="finish-badge">✓</div>
+      <p class="eyebrow">MISSION ACCOMPLIE</p>
+      <h2>Solide jusqu’au bout.</h2>
+      <p class="finish-copy">Chaque séance compte. Prends un instant pour apprécier le travail accompli.</p>
+      <div class="finish-stats">
+        <div><strong id="finishMinutes">15</strong><small>MINUTES</small></div>
+        <div><strong id="finishCalories">100</strong><small>KCAL EST.</small></div>
+        <div><strong id="finishExercises">12</strong><small>EXERCICES</small></div>
+      </div>
+      <button class="primary-button finish-button" id="closeFinish"><span>Revenir à l’accueil</span><span>→</span></button>
     </div>
   </dialog>
 
@@ -106,6 +135,6 @@
     </form>
   </dialog>
   <div class="toast" id="toast" role="status"></div>
-  <script src="app.js"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>
