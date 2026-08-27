@@ -8,7 +8,7 @@
   <title>Callisthenut</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body>
   <div class="app-shell">
@@ -102,8 +102,9 @@
         <div class="timer-ring" id="timerRing"><div><span class="timer" id="timerDisplay">00:40</span><small id="timerCaption">TEMPS RESTANT</small></div></div>
         <div class="live-calories"><span>≈</span> <strong id="liveCalories">0</strong> kcal dépensées</div>
         <p class="exercise-tip" id="exerciseTip">Garde le dos droit et pousse les genoux vers l'extérieur.</p>
+        <ol class="movement-steps" id="movementSteps" aria-label="Explication du mouvement"></ol>
       </div>
-      <footer class="player-controls"><button class="control-button" id="previousExercise" aria-label="Exercice précédent">‹</button><button class="pause-button" id="pauseTimer">Mettre en pause</button><button class="control-button" id="nextExercise" aria-label="Exercice suivant">›</button></footer>
+      <footer class="player-controls"><button class="control-button" id="previousExercise" aria-label="Exercice précédent">‹</button><button class="control-button" id="nextExercise" aria-label="Exercice suivant">›</button><button class="pause-button" id="pauseTimer"><span class="pause-symbol">Ⅱ</span><span id="pauseLabel">Pause</span></button></footer>
     </div>
   </dialog>
 
@@ -135,6 +136,6 @@
     </form>
   </dialog>
   <div class="toast" id="toast" role="status"></div>
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>

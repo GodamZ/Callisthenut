@@ -17,6 +17,25 @@ const EXERCISES = {
   highknees:{name:'Montées de genoux',cat:'CARDIO',tip:'Grandis-toi et monte les genoux avec des appuis rapides et légers.',pose:'highknees'}
 };
 
+const INSTRUCTIONS={
+  jack:['Debout, pieds joints et bras le long du corps.','Saute en écartant les pieds pendant que les mains montent au-dessus de la tête.','Reviens souplement et enchaîne sans bloquer les genoux.'],
+  squat:['Pieds un peu plus larges que les hanches, pointes légèrement ouvertes.','Recule les fesses comme pour t’asseoir et descends jusqu’à être confortable.','Pousse dans les talons pour remonter, poitrine haute et genoux dans l’axe.'],
+  pushup:['Mains sous les épaules, corps aligné de la tête aux talons.','Plie les coudes et descends la poitrine vers le sol, ventre serré.','Repousse le sol sans creuser le dos. Pose les genoux si nécessaire.'],
+  lunge:['Debout, fais un grand pas vers l’avant en gardant le buste vertical.','Plie les deux jambes et rapproche le genou arrière du sol.','Pousse dans le pied avant pour revenir, puis change de jambe.'],
+  plank:['Avant-bras au sol, coudes sous les épaules et jambes tendues.','Serre abdominaux et fessiers pour aligner tête, dos et talons.','Respire lentement sans laisser les hanches monter ou descendre.'],
+  climber:['Pars en planche haute avec les mains sous les épaules.','Ramène un genou vers la poitrine, replace-le puis change de jambe.','Accélère progressivement en gardant les hanches stables.'],
+  bridge:['Sur le dos, plie les genoux et pose les pieds près des fesses.','Pousse dans les talons pour lever le bassin.','Serre les fessiers en haut puis redescends lentement.'],
+  deadbug:['Sur le dos, bras vers le plafond et genoux à angle droit.','Allonge un bras et la jambe opposée sans décoller les lombaires.','Reviens au centre puis change de côté avec contrôle.'],
+  pike:['Depuis la planche, monte les hanches pour former un V inversé.','Plie les coudes et dirige le sommet de la tête entre les mains.','Repousse dans les paumes en gardant les hanches hautes.'],
+  bear:['À quatre pattes, mains sous les épaules et genoux sous les hanches.','Décolle les genoux puis avance main et pied opposés.','Fais de petits pas avec le dos plat et le bassin stable.'],
+  sideplank:['Sur le côté, place le coude sous l’épaule et allonge les jambes.','Soulève le bassin pour aligner pieds, hanches et tête.','Garde l’épaule basse et change de côté à mi-temps.'],
+  burpee:['Debout, accroupis-toi et pose les mains devant les pieds.','Recule les pieds en planche puis ramène-les sous le corps.','Redresse-toi avec un petit saut, ou simplement sur les pointes.'],
+  calf:['Debout, pieds parallèles et ventre légèrement contracté.','Monte le plus haut possible sur la pointe des pieds.','Marque une pause puis redescends lentement.'],
+  superman:['Sur le ventre, tends les bras devant toi et garde la nuque neutre.','Décolle légèrement bras, poitrine et jambes.','Tiens une seconde puis redescends sans jeter la tête en arrière.'],
+  dip:['Assis, place les mains derrière toi, doigts vers les pieds.','Décolle les fesses et plie les coudes vers l’arrière.','Pousse dans les paumes en gardant les épaules basses.'],
+  highknees:['Tiens-toi droit, pieds largeur de hanches.','Monte alternativement chaque genou vers la hauteur des hanches.','Reste léger sur les pieds et conserve un rythme contrôlé.']
+};
+
 const PROGRAM = [
   {title:'Fondations',focus:'CORPS ENTIER',met:6.5,ids:['jumping_jacks','squats','pushups','lunges','plank','climbers','bridges','deadbug','pike','bear','sideplank','burpees']},
   {title:'Jambes d’acier',focus:'BAS DU CORPS',met:6.2,ids:['jumping_jacks','squats','lunges','bridges','calf','climbers','squats','lunges','deadbug','bridges','highknees','plank']},
@@ -107,12 +126,13 @@ function updatePlayer(){
   playerPhase.textContent=isRest?'RÉCUPÉRATION':'AU TRAVAIL';playerStep.textContent=isRest?'PROCHAIN EXERCICE':`EXERCICE ${p.index+1} SUR 12`;
   exerciseCategory.textContent=isRest?'RESPIRE & PRÉPARE-TOI':p.exercise.cat;exerciseName.textContent=isRest?`Ensuite : ${p.exercise.name}`:p.exercise.name;
   exerciseFigure.innerHTML=svg(p.exercise.pose);exerciseTip.textContent=isRest?'Marche sur place, relâche les épaules et reprends ton souffle.':p.exercise.tip;
+  movementSteps.innerHTML=(isRest?['Marche doucement sur place.','Inspire par le nez et expire lentement.','Observe le prochain mouvement et prépare ta position.']:INSTRUCTIONS[p.exercise.pose]).map(step=>`<li>${step}</li>`).join('');
   timerDisplay.textContent=`${String(Math.floor(session.remaining/60)).padStart(2,'0')}:${String(session.remaining%60).padStart(2,'0')}`;
   timerRing.style.setProperty('--progress',`${Math.max(0,session.remaining/p.seconds)*360}deg`);
   timerCaption.textContent=isRest?'RÉCUPÉRATION':'TEMPS RESTANT';
   liveCalories.textContent=Math.round(todayProgram().met*3.5*state.weight/200*(session.elapsed/60));
   playerProgress.style.width=`${((session.position+(1-session.remaining/p.seconds))/session.timeline.length)*100}%`;
-  pauseTimer.textContent=session.running?'Mettre en pause':'Reprendre la séance';pauseTimer.classList.toggle('paused',!session.running);
+  pauseLabel.textContent=session.running?'Pause':'Reprendre';pauseTimer.querySelector('.pause-symbol').textContent=session.running?'Ⅱ':'▶';pauseTimer.classList.toggle('paused',!session.running);
   document.title=`${session.remaining}s · ${p.exercise.name} — Callisthenut`;
 }
 function finishWorkout(){
