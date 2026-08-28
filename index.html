@@ -8,7 +8,7 @@
   <title>Callisthenut</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=7">
+  <link rel="stylesheet" href="styles.css?v=8">
 </head>
 <body>
   <div class="app-shell">
@@ -30,6 +30,7 @@
           <div class="streak-card" aria-label="Série en cours"><span class="streak-icon">✦</span><strong id="streakCount">0</strong><small>jours</small></div>
         </div>
 
+        <div class="section-heading workout-choice-heading"><div><p class="eyebrow">CHOISIS TA MISSION</p><h2>Entraînement du jour</h2></div></div>
         <section class="workout-card" id="todayWorkout">
           <div class="workout-visual" id="heroVisual"></div>
           <div class="workout-overlay">
@@ -41,6 +42,12 @@
             </div>
             <button class="primary-button" id="startWorkout"><span>Commencer</span><span class="play">▶</span></button>
           </div>
+        </section>
+
+        <section class="cindy-card">
+          <div class="cindy-card-top"><span class="cindy-monogram">C</span><div><p class="eyebrow">AMRAP · POIDS DU CORPS</p><h2>CINDY</h2><p>Tractions, pompes et squats. Enchaîne le plus de tours possible.</p></div></div>
+          <div class="cindy-sequence"><span><b>5</b> tractions</span><i>→</i><span><b>10</b> pompes</span><i>→</i><span><b>15</b> squats</span></div>
+          <div class="cindy-actions"><button class="cindy-start primary" id="startCindyClassic"><span>Classique</span><small>20 MIN</small></button><button class="cindy-start" id="startCindyBeginner"><span>Débutant</span><small>12 MIN</small></button></div>
         </section>
 
         <section class="section-block">
@@ -117,9 +124,23 @@
       <div class="finish-stats">
         <div><strong id="finishMinutes">15</strong><small>MINUTES</small></div>
         <div><strong id="finishCalories">100</strong><small>KCAL EST.</small></div>
-        <div><strong id="finishExercises">12</strong><small>EXERCICES</small></div>
+        <div><strong id="finishExercises">12</strong><small id="finishMetricLabel">EXERCICES</small></div>
       </div>
       <button class="primary-button finish-button" id="closeFinish"><span>Revenir à l’accueil</span><span>→</span></button>
+    </div>
+  </dialog>
+
+  <dialog class="cindy-player" id="cindyPlayer">
+    <div class="cindy-shell">
+      <header class="player-header"><button class="icon-button ghost" id="closeCindy" aria-label="Quitter Cindy">×</button><div><small id="cindyLevelLabel">CINDY CLASSIQUE</small><strong>AMRAP · QUALITÉ AVANT VITESSE</strong></div><button class="icon-button ghost" id="cindySound" aria-label="Couper les signaux sonores">♪</button></header>
+      <div class="cindy-content">
+        <p class="eyebrow">TEMPS RESTANT</p>
+        <div class="cindy-timer" id="cindyTimer">20:00</div>
+        <div class="round-counter"><small>TOURS TERMINÉS</small><strong id="cindyRounds">0</strong></div>
+        <div class="cindy-movements" id="cindyMovements"></div>
+        <p class="cindy-guidance">Effectue les trois mouvements dans l’ordre, puis valide ton tour. Garde une amplitude propre et repose-toi quand nécessaire.</p>
+      </div>
+      <footer class="cindy-controls"><button class="secondary-button" id="finishCindy">Terminer</button><button class="cindy-pause" id="pauseCindy">Ⅱ&nbsp; Pause</button><button class="primary-button" id="completeRound"><span>Tour terminé</span><span>＋1</span></button></footer>
     </div>
   </dialog>
 
@@ -136,6 +157,6 @@
     </form>
   </dialog>
   <div class="toast" id="toast" role="status"></div>
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

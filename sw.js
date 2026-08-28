@@ -1,4 +1,4 @@
-const CACHE='callisthenut-v7';
+const CACHE='callisthenut-v8';
 const ASSETS=['./','index.html','styles.css','app.js','icon.svg','manifest.webmanifest'];
 self.addEventListener('install',event=>{self.skipWaiting();event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)))});
 self.addEventListener('activate',event=>event.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key))))])));

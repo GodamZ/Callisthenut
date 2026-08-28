@@ -47,7 +47,7 @@ const PROGRAM = [
 ];
 const DAY_NAMES=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const state=loadState();
-let session=null,timerId=null,reminderId=null,audioContext=null;
+let session=null,timerId=null,reminderId=null,audioContext=null,cindySession=null,cindyTimerId=null;
 
 function loadState(){
   const base={name:'soldat',duration:15,level:1,weight:70,reminder:'18:30',sound:true,goals:{},history:[]};
@@ -57,6 +57,7 @@ function saveState(){localStorage.setItem('callisthenut-state',JSON.stringify(st
 function dateKey(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function todayProgram(){return PROGRAM[(new Date().getDay()+6)%7]}
 function estimatedCalories(program=todayProgram(),minutes=state.duration){return Math.round(program.met*3.5*state.weight/200*minutes)}
+function completeDailyWorkout(){const goals=new Set(state.goals[dateKey()]||[]);goals.add('workout');state.goals[dateKey()]=[...goals]}
 function svg(pose){
   const poses={
     squat:'<circle cx="115" cy="48" r="17"/><path d="M114 67l-15 58 54 18m-39-71 42 38m-52 17-36 38m85-22 20 43M96 88l-40 20m62-24 32 9"/>',
@@ -92,7 +93,7 @@ function render(){
   document.querySelector('#menuLevel').textContent=['','Débutant','Intermédiaire','Avancé'][state.level];
   document.querySelector('#menuDuration').textContent=state.duration;
   document.querySelector('#menuReminder').textContent=`Tous les jours à ${state.reminder}`;
-  const goals=[['workout','◎','Terminer la mission',`${state.duration} minutes de callisthénie`],['water','◇','Boire suffisamment','Objectif personnel : 6 à 8 verres'],['walk','↗','Bouger en plus','10 minutes de marche active']];
+  const goals=[['workout','◎','Terminer la mission','Callisthénie classique ou CINDY'],['water','◇','Boire suffisamment','Objectif personnel : 6 à 8 verres'],['walk','↗','Bouger en plus','10 minutes de marche active']];
   document.querySelector('#goalList').innerHTML=goals.map(g=>`<button class="goal-item ${doneGoals.includes(g[0])?'done':''}" data-goal="${g[0]}"><span class="goal-check"></span><span class="goal-icon">${g[1]}</span><span class="goal-text"><strong>${g[2]}</strong><small>${g[3]}</small></span></button>`).join('');
   document.querySelector('#goalScore').textContent=`${doneGoals.length}/3`;
   renderPlan();renderProgress();fillSettings();
@@ -109,7 +110,7 @@ function renderProgress(){
   document.querySelector('#totalCalories').textContent=state.history.reduce((n,h)=>n+(h.calories||estimatedCalories(PROGRAM.find(p=>p.title===h.title)||PROGRAM[0],h.minutes)),0);
   const days=Array.from({length:28},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(27-i));return d});
   document.querySelector('#activityGrid').innerHTML=days.map(d=>`<span class="activity-cell ${state.history.some(h=>h.date===dateKey(d))?'active':''} ${dateKey(d)===dateKey()?'today':''}" title="${d.toLocaleDateString('fr-FR')}"></span>`).join('');
-  document.querySelector('#historyList').innerHTML=state.history.length?state.history.slice().reverse().slice(0,6).map(h=>`<div class="history-item"><div><strong>${h.title}</strong><small>${new Date(h.date+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}</small></div><span>${h.minutes} min · ≈ ${h.calories||estimatedCalories(PROGRAM.find(p=>p.title===h.title)||PROGRAM[0],h.minutes)} kcal</span></div>`).join(''):'<div class="empty-state">Ta première mission apparaîtra ici.</div>';
+  document.querySelector('#historyList').innerHTML=state.history.length?state.history.slice().reverse().slice(0,6).map(h=>`<div class="history-item"><div><strong>${h.title}</strong><small>${new Date(h.date+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}${h.rounds!==undefined?` · ${h.rounds} tours`:''}</small></div><span>${h.minutes} min · ≈ ${h.calories||estimatedCalories(PROGRAM.find(p=>p.title===h.title)||PROGRAM[0],h.minutes)} kcal</span></div>`).join(''):'<div class="empty-state">Ta première mission apparaîtra ici.</div>';
 }
 function getStreak(){let n=0,d=new Date();if(!state.history.some(h=>h.date===dateKey(d)))d.setDate(d.getDate()-1);while(state.history.some(h=>h.date===dateKey(d))){n++;d.setDate(d.getDate()-1)}return n}
 function fillSettings(){nameInput.value=state.name==='soldat'?'':state.name;durationSelect.value=state.duration;levelSelect.value=state.level;weightInput.value=state.weight;reminderTime.value=state.reminder}
@@ -143,11 +144,25 @@ function updatePlayer(){
   document.title=`${session.remaining}s · ${p.exercise.name} — Callisthenut`;
 }
 function finishWorkout(){
-  clearInterval(timerId);const p=todayProgram(),calories=estimatedCalories(p);if(!state.history.some(h=>h.date===dateKey()))state.history.push({date:dateKey(),title:p.title,minutes:Number(state.duration),calories});
-  const goals=new Set(state.goals[dateKey()]||[]);goals.add('workout');state.goals[dateKey()]=[...goals];saveState();session=null;workoutPlayer.close();document.title='Callisthenut';render();
-  finishMinutes.textContent=state.duration;finishCalories.textContent=calories;finishExercises.textContent=p.ids.length;finishScreen.showModal();
+  clearInterval(timerId);const p=todayProgram(),calories=estimatedCalories(p);state.history.push({id:Date.now(),date:dateKey(),title:p.title,minutes:Number(state.duration),calories});
+  completeDailyWorkout();saveState();session=null;workoutPlayer.close();document.title='Callisthenut';render();
+  finishMinutes.textContent=state.duration;finishCalories.textContent=calories;finishExercises.textContent=p.ids.length;finishMetricLabel.textContent='EXERCICES';finishScreen.showModal();
 }
 function closeWorkout(){clearInterval(timerId);session=null;workoutPlayer.close();document.title='Callisthenut'}
+function cindyConfig(variant){return variant==='classic'?{name:'CINDY classique',minutes:20,met:8,reps:30,moves:[['5','Tractions','Menton au-dessus de la barre'],['10','Pompes','Poitrine proche du sol'],['15','Squats','Hanches sous les genoux']]}:{name:'CINDY débutant',minutes:12,met:6,reps:18,moves:[['3','Tirages horizontaux','Sous une table parfaitement stable'],['6','Pompes inclinées','Mains sur un support stable'],['9','Squats','Amplitude confortable']]}}
+function startCindy(variant){
+  prepareAudio();const config=cindyConfig(variant);cindySession={variant,config,remaining:config.minutes*60,prep:10,rounds:0,running:true};
+  document.querySelector('#cindySound').textContent=state.sound?'♪':'♩';
+  document.querySelector('#cindyLevelLabel').textContent=config.name.toUpperCase();document.querySelector('#cindyMovements').innerHTML=config.moves.map(move=>`<div class="cindy-movement"><b>${move[0]}</b><span><strong>${move[1]}</strong><small>${move[2]}</small></span></div>`).join('');
+  updateCindy();document.querySelector('#cindyPlayer').showModal();cindyTimerId=setInterval(tickCindy,1000);
+}
+function tickCindy(){if(!cindySession?.running)return;if(cindySession.prep>0){if(cindySession.prep>1){cindySession.prep--;if(cindySession.prep<=3)beep()}else cindySession.prep=0}else if(cindySession.remaining>1){cindySession.remaining--;if(cindySession.remaining<=3)beep()}else{cindySession.remaining=0;finishCindyWorkout()}updateCindy()}
+function updateCindy(){if(!cindySession)return;const value=cindySession.prep||cindySession.remaining;document.querySelector('#cindyTimer').textContent=`${String(Math.floor(value/60)).padStart(2,'0')}:${String(value%60).padStart(2,'0')}`;document.querySelector('#cindyRounds').textContent=cindySession.rounds;document.querySelector('#pauseCindy').textContent=cindySession.running?'Ⅱ  Pause':'▶  Reprendre';document.querySelector('#cindyLevelLabel').textContent=cindySession.prep?`DÉPART DANS ${cindySession.prep} SECONDES`:cindySession.config.name.toUpperCase()}
+function closeCindyWorkout(){clearInterval(cindyTimerId);cindySession=null;document.querySelector('#cindyPlayer').close()}
+function finishCindyWorkout(){
+  if(!cindySession)return;clearInterval(cindyTimerId);const {config,rounds,remaining}=cindySession,elapsed=Math.max(1,Math.round((config.minutes*60-remaining)/60)),calories=Math.round(config.met*3.5*state.weight/200*elapsed),reps=rounds*config.reps;
+  state.history.push({id:Date.now(),date:dateKey(),title:config.name,minutes:elapsed,calories,rounds,reps});completeDailyWorkout();saveState();cindySession=null;document.querySelector('#cindyPlayer').close();render();finishMinutes.textContent=elapsed;finishCalories.textContent=calories;finishExercises.textContent=reps;finishMetricLabel.textContent='RÉPÉTITIONS';finishScreen.showModal();
+}
 function scheduleReminder(){
   clearTimeout(reminderId);if(Notification.permission!=='granted')return;
   const [h,m]=state.reminder.split(':').map(Number),now=new Date(),next=new Date();next.setHours(h,m,0,0);if(next<=now)next.setDate(next.getDate()+1);
@@ -164,6 +179,13 @@ document.querySelector('#nextExercise').addEventListener('click',()=>advance(1))
 document.querySelector('#previousExercise').addEventListener('click',()=>advance(-1));
 document.querySelector('#pauseTimer').addEventListener('click',()=>{session.running=!session.running;updatePlayer()});
 document.querySelector('#soundToggle').addEventListener('click',()=>{prepareAudio();state.sound=!state.sound;saveState();updateSoundButton();if(state.sound){beep();toast('Signaux sonores activés')}else toast('Signaux sonores coupés')});
+document.querySelector('#startCindyClassic').addEventListener('click',()=>startCindy('classic'));
+document.querySelector('#startCindyBeginner').addEventListener('click',()=>startCindy('beginner'));
+document.querySelector('#completeRound').addEventListener('click',()=>{if(!cindySession||cindySession.prep)return;cindySession.rounds++;updateCindy()});
+document.querySelector('#pauseCindy').addEventListener('click',()=>{if(!cindySession)return;cindySession.running=!cindySession.running;updateCindy()});
+document.querySelector('#closeCindy').addEventListener('click',closeCindyWorkout);
+document.querySelector('#finishCindy').addEventListener('click',finishCindyWorkout);
+document.querySelector('#cindySound').addEventListener('click',()=>{prepareAudio();state.sound=!state.sound;saveState();updateSoundButton();document.querySelector('#cindySound').textContent=state.sound?'♪':'♩';if(state.sound)beep()});
 document.querySelector('#settingsButton').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());
 document.querySelector('#openPreferences').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());
 document.querySelector('#openReminder').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());
