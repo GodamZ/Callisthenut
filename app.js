@@ -47,7 +47,7 @@ const PROGRAM = [
 ];
 const DAY_NAMES=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const state=loadState();
-let session=null,timerId=null,reminderId=null,audioContext=null,cindySession=null,cindyTimerId=null;
+let session=null,timerId=null,reminderId=null,audioContext=null,cindySession=null,cindyTimerId=null,kettlebellSession=null,kettlebellTimerId=null;
 
 function loadState(){
   const base={name:'soldat',duration:15,level:1,weight:70,reminder:'18:30',sound:true,goals:{},history:[]};
@@ -93,7 +93,7 @@ function render(){
   document.querySelector('#menuLevel').textContent=['','Débutant','Intermédiaire','Avancé'][state.level];
   document.querySelector('#menuDuration').textContent=state.duration;
   document.querySelector('#menuReminder').textContent=`Tous les jours à ${state.reminder}`;
-  const goals=[['workout','◎','Terminer la mission','Callisthénie classique ou CINDY'],['water','◇','Boire suffisamment','Objectif personnel : 6 à 8 verres'],['walk','↗','Bouger en plus','10 minutes de marche active']];
+  const goals=[['workout','◎','Terminer la mission','Callisthénie, CINDY ou kettlebell'],['water','◇','Boire suffisamment','Objectif personnel : 6 à 8 verres'],['walk','↗','Bouger en plus','10 minutes de marche active']];
   document.querySelector('#goalList').innerHTML=goals.map(g=>`<button class="goal-item ${doneGoals.includes(g[0])?'done':''}" data-goal="${g[0]}"><span class="goal-check"></span><span class="goal-icon">${g[1]}</span><span class="goal-text"><strong>${g[2]}</strong><small>${g[3]}</small></span></button>`).join('');
   document.querySelector('#goalScore').textContent=`${doneGoals.length}/3`;
   renderPlan();renderProgress();fillSettings();
@@ -163,6 +163,19 @@ function finishCindyWorkout(){
   if(!cindySession)return;clearInterval(cindyTimerId);const {config,rounds,remaining}=cindySession,elapsed=Math.max(1,Math.round((config.minutes*60-remaining)/60)),calories=Math.round(config.met*3.5*state.weight/200*elapsed),reps=rounds*config.reps;
   state.history.push({id:Date.now(),date:dateKey(),title:config.name,minutes:elapsed,calories,rounds,reps});completeDailyWorkout();saveState();cindySession=null;document.querySelector('#cindyPlayer').close();render();finishMinutes.textContent=elapsed;finishCalories.textContent=calories;finishExercises.textContent=reps;finishMetricLabel.textContent='RÉPÉTITIONS';finishScreen.showModal();
 }
+function kettlebellConfig(variant){return variant==='classic'?{name:'Kettlebell essentiel',minutes:18,met:7.5,reps:38,moves:[['10','Deadlifts','Pousse les hanches en arrière, dos neutre'],['8/bras','Rowings unilatéraux','Coude vers la hanche, buste stable'],['12','Swings russes','Puissance des hanches, pas des bras'],['20 s','Gainage avec tirage','Option : planche statique sans charge']]}:{name:'Kettlebell initiation',minutes:12,met:5.8,reps:30,moves:[['8','Deadlifts','Charge près du corps, dos neutre'],['6/bras','Rowings assistés','Main libre sur un support stable'],['10','Goblet squats','Kettlebell contre la poitrine'],['20 s','Suitcase hold','Debout, grandis-toi sans pencher']]}}
+function startKettlebell(variant){
+  prepareAudio();const config=kettlebellConfig(variant);kettlebellSession={variant,config,remaining:config.minutes*60,prep:10,rounds:0,running:true};
+  document.querySelector('#kettlebellSound').textContent=state.sound?'♪':'♩';document.querySelector('#kettlebellMovements').innerHTML=config.moves.map(move=>`<div class="cindy-movement"><b>${move[0]}</b><span><strong>${move[1]}</strong><small>${move[2]}</small></span></div>`).join('');
+  updateKettlebell();document.querySelector('#kettlebellPlayer').showModal();kettlebellTimerId=setInterval(tickKettlebell,1000);
+}
+function tickKettlebell(){if(!kettlebellSession?.running)return;if(kettlebellSession.prep>0){if(kettlebellSession.prep>1){kettlebellSession.prep--;if(kettlebellSession.prep<=3)beep()}else kettlebellSession.prep=0}else if(kettlebellSession.remaining>1){kettlebellSession.remaining--;if(kettlebellSession.remaining<=3)beep()}else{kettlebellSession.remaining=0;finishKettlebellWorkout()}updateKettlebell()}
+function updateKettlebell(){if(!kettlebellSession)return;const value=kettlebellSession.prep||kettlebellSession.remaining;document.querySelector('#kettlebellTimer').textContent=`${String(Math.floor(value/60)).padStart(2,'0')}:${String(value%60).padStart(2,'0')}`;document.querySelector('#kettlebellRounds').textContent=kettlebellSession.rounds;document.querySelector('#pauseKettlebell').textContent=kettlebellSession.running?'Ⅱ  Pause':'▶  Reprendre';document.querySelector('#kettlebellLevelLabel').textContent=kettlebellSession.prep?`DÉPART DANS ${kettlebellSession.prep} SECONDES`:kettlebellSession.config.name.toUpperCase()}
+function closeKettlebellWorkout(){clearInterval(kettlebellTimerId);kettlebellSession=null;document.querySelector('#kettlebellPlayer').close()}
+function finishKettlebellWorkout(){
+  if(!kettlebellSession)return;clearInterval(kettlebellTimerId);const {config,rounds,remaining}=kettlebellSession,elapsed=Math.max(1,Math.round((config.minutes*60-remaining)/60)),calories=Math.round(config.met*3.5*state.weight/200*elapsed),reps=rounds*config.reps;
+  state.history.push({id:Date.now(),date:dateKey(),title:config.name,minutes:elapsed,calories,rounds,reps});completeDailyWorkout();saveState();kettlebellSession=null;document.querySelector('#kettlebellPlayer').close();render();finishMinutes.textContent=elapsed;finishCalories.textContent=calories;finishExercises.textContent=rounds;finishMetricLabel.textContent='TOURS';finishScreen.showModal();
+}
 function scheduleReminder(){
   clearTimeout(reminderId);if(Notification.permission!=='granted')return;
   const [h,m]=state.reminder.split(':').map(Number),now=new Date(),next=new Date();next.setHours(h,m,0,0);if(next<=now)next.setDate(next.getDate()+1);
@@ -186,6 +199,13 @@ document.querySelector('#pauseCindy').addEventListener('click',()=>{if(!cindySes
 document.querySelector('#closeCindy').addEventListener('click',closeCindyWorkout);
 document.querySelector('#finishCindy').addEventListener('click',finishCindyWorkout);
 document.querySelector('#cindySound').addEventListener('click',()=>{prepareAudio();state.sound=!state.sound;saveState();updateSoundButton();document.querySelector('#cindySound').textContent=state.sound?'♪':'♩';if(state.sound)beep()});
+document.querySelector('#startKettlebellClassic').addEventListener('click',()=>startKettlebell('classic'));
+document.querySelector('#startKettlebellBeginner').addEventListener('click',()=>startKettlebell('beginner'));
+document.querySelector('#completeKettlebellRound').addEventListener('click',()=>{if(!kettlebellSession||kettlebellSession.prep)return;kettlebellSession.rounds++;updateKettlebell()});
+document.querySelector('#pauseKettlebell').addEventListener('click',()=>{if(!kettlebellSession)return;kettlebellSession.running=!kettlebellSession.running;updateKettlebell()});
+document.querySelector('#closeKettlebell').addEventListener('click',closeKettlebellWorkout);
+document.querySelector('#finishKettlebell').addEventListener('click',finishKettlebellWorkout);
+document.querySelector('#kettlebellSound').addEventListener('click',()=>{prepareAudio();state.sound=!state.sound;saveState();updateSoundButton();document.querySelector('#kettlebellSound').textContent=state.sound?'♪':'♩';if(state.sound)beep()});
 document.querySelector('#settingsButton').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());
 document.querySelector('#openPreferences').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());
 document.querySelector('#openReminder').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());

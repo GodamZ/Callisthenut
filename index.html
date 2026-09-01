@@ -8,7 +8,7 @@
   <title>Callisthenut</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
   <div class="app-shell">
@@ -48,6 +48,13 @@
           <div class="cindy-card-top"><span class="cindy-monogram">C</span><div><p class="eyebrow">AMRAP · POIDS DU CORPS</p><h2>CINDY</h2><p>Tractions, pompes et squats. Enchaîne le plus de tours possible.</p></div></div>
           <div class="cindy-sequence"><span><b>5</b> tractions</span><i>→</i><span><b>10</b> pompes</span><i>→</i><span><b>15</b> squats</span></div>
           <div class="cindy-actions"><button class="cindy-start primary" id="startCindyClassic"><span>Classique</span><small>20 MIN</small></button><button class="cindy-start" id="startCindyBeginner"><span>Débutant</span><small>12 MIN</small></button></div>
+        </section>
+
+        <section class="kettlebell-card">
+          <div class="cindy-card-top"><span class="kettlebell-monogram">KB</span><div><p class="eyebrow">DOS · CENTRE · CONDITIONNEMENT</p><h2>Kettlebell</h2><p>Renforce la chaîne postérieure et augmente la dépense énergétique avec une seule kettlebell.</p></div></div>
+          <div class="cindy-sequence kettlebell-sequence"><span><b>10</b> deadlifts</span><i>→</i><span><b>8/bras</b> rowings</span><i>→</i><span><b>12</b> swings</span><i>→</i><span><b>20 s</b> gainage</span></div>
+          <p class="kettlebell-note">La perte de graisse est globale : régularité, alimentation et dépense énergétique font la différence.</p>
+          <div class="cindy-actions"><button class="kettlebell-start primary" id="startKettlebellClassic"><span>Essentiel</span><small>18 MIN</small></button><button class="kettlebell-start" id="startKettlebellBeginner"><span>Initiation</span><small>12 MIN</small></button></div>
         </section>
 
         <section class="section-block">
@@ -115,6 +122,20 @@
     </div>
   </dialog>
 
+  <dialog class="cindy-player kettlebell-player" id="kettlebellPlayer">
+    <div class="cindy-shell">
+      <header class="player-header"><button class="icon-button ghost" id="closeKettlebell" aria-label="Quitter la séance kettlebell">×</button><div><small id="kettlebellLevelLabel">KETTLEBELL ESSENTIEL</small><strong>DOS · CENTRE · CONDITIONNEMENT</strong></div><button class="icon-button ghost" id="kettlebellSound" aria-label="Couper les signaux sonores">♪</button></header>
+      <div class="cindy-content">
+        <p class="eyebrow">TEMPS RESTANT</p>
+        <div class="cindy-timer" id="kettlebellTimer">18:00</div>
+        <div class="round-counter kettlebell-counter"><small>TOURS TERMINÉS</small><strong id="kettlebellRounds">0</strong></div>
+        <div class="cindy-movements" id="kettlebellMovements"></div>
+        <p class="cindy-guidance">Charnière de hanches, dos neutre et abdominaux engagés. Termine un tour propre avant de l’ajouter.</p>
+      </div>
+      <footer class="cindy-controls kettlebell-controls"><button class="secondary-button" id="finishKettlebell">Terminer</button><button class="cindy-pause" id="pauseKettlebell">Ⅱ&nbsp; Pause</button><button class="primary-button" id="completeKettlebellRound"><span>Tour terminé</span><span>＋1</span></button></footer>
+    </div>
+  </dialog>
+
   <dialog class="finish-screen" id="finishScreen">
     <div class="finish-content">
       <div class="finish-badge">✓</div>
@@ -157,6 +178,6 @@
     </form>
   </dialog>
   <div class="toast" id="toast" role="status"></div>
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
