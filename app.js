@@ -36,17 +36,16 @@ const INSTRUCTIONS={
   highknees:['Tiens-toi droit, pieds largeur de hanches.','Monte alternativement chaque genou vers la hauteur des hanches.','Reste léger sur les pieds et conserve un rythme contrôlé.']
 };
 
-const PROGRAM = [
-  {title:'Fondations',focus:'CORPS ENTIER',met:6.5,ids:['jumping_jacks','squats','pushups','lunges','plank','climbers','bridges','deadbug','pike','bear','sideplank','burpees']},
-  {title:'Jambes d’acier',focus:'BAS DU CORPS',met:6.2,ids:['jumping_jacks','squats','lunges','bridges','calf','climbers','squats','lunges','deadbug','bridges','highknees','plank']},
-  {title:'Posture & centre',focus:'MOBILITÉ ACTIVE',met:4.5,ids:['jumping_jacks','deadbug','plank','superman','sideplank','bridges','bear','deadbug','pike','superman','sideplank','climbers']},
-  {title:'Haut du corps',focus:'POUSSÉE & DOS',met:5.8,ids:['jumping_jacks','pushups','pike','superman','dips','bear','pushups','plank','pike','superman','dips','sideplank']},
-  {title:'Commando cardio',focus:'CARDIO',met:8,ids:['jumping_jacks','highknees','climbers','squats','burpees','lunges','highknees','bear','climbers','jumping_jacks','burpees','plank']},
-  {title:'Force totale',focus:'CORPS ENTIER',met:7,ids:['jumping_jacks','squats','pushups','lunges','pike','bridges','bear','dips','sideplank','superman','climbers','burpees']},
-  {title:'Récupération active',focus:'CONTRÔLE',met:4,ids:['jumping_jacks','squats','deadbug','bridges','superman','lunges','sideplank','calf','bear','plank','deadbug','superman']}
-];
+const LEGACY_EXERCISES={...EXERCISES};
+for(const [id,theme] of Object.entries({jumping_jacks:'cardio',pushups:'arms',lunges:'legs',plank:'abs',climbers:'cardio',pike:'arms',burpees:'cardio',calf:'legs',dips:'arms',highknees:'cardio'})){
+  const e=LEGACY_EXERCISES[id];CATALOG.push({...e,id,stage:id==='jumping_jacks'?'warm':'strength',themes:[theme],steps:INSTRUCTIONS[e.pose]});
+}
+for(const exercise of CATALOG)EXERCISES[exercise.id]={...exercise,cat:exercise.themes.map(t=>THEMES[t]).join(' · ')};
+const PROGRAM=[{title:'Ancienne séance',met:6.5}];
 const DAY_NAMES=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const state=loadState();
+state.duration=Number(state.duration)===20?20:15;
+if(!Number.isInteger(state.planSeed)){state.planSeed=crypto.getRandomValues(new Uint32Array(1))[0];saveState()}
 let session=null,timerId=null,reminderId=null,audioContext=null,cindySession=null,cindyTimerId=null,kettlebellSession=null,kettlebellTimerId=null;
 
 function loadState(){
@@ -55,7 +54,7 @@ function loadState(){
 }
 function saveState(){localStorage.setItem('callisthenut-state',JSON.stringify(state))}
 function dateKey(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
-function todayProgram(){return PROGRAM[(new Date().getDay()+6)%7]}
+function todayProgram(){return programForDate(new Date(),state.duration,state.planSeed)}
 function estimatedCalories(program=todayProgram(),minutes=state.duration){return Math.round(program.met*3.5*state.weight/200*minutes)}
 function completeDailyWorkout(){const goals=new Set(state.goals[dateKey()]||[]);goals.add('workout');state.goals[dateKey()]=[...goals]}
 function svg(pose){
@@ -86,8 +85,8 @@ function render(){
   document.querySelector('#workoutTitle').textContent=program.title;
   document.querySelector('#workoutFocus').textContent=program.focus;
   document.querySelector('#workoutLevel').textContent=`NIVEAU ${state.level}`;
-  document.querySelector('#workoutMeta').textContent=`${state.duration} min · 12 exercices · ≈ ${estimatedCalories(program)} kcal`;
-  document.querySelector('#heroVisual').innerHTML=svg(program.ids[1]);
+  document.querySelector('#workoutMeta').textContent=`${state.duration} min · ${program.ids.length} exercices · ≈ ${estimatedCalories(program)} kcal`;
+  document.querySelector('#heroVisual').innerHTML=exerciseIllustration(EXERCISES[program.blocks[2].ids[0]]);
   const streak=getStreak();document.querySelector('#streakCount').textContent=streak;document.querySelector('#progressStreak').textContent=streak;
   document.querySelector('#menuName').textContent=state.name==='soldat'?'Soldat':state.name;
   document.querySelector('#menuLevel').textContent=['','Débutant','Intermédiaire','Avancé'][state.level];
@@ -96,17 +95,17 @@ function render(){
   const goals=[['workout','◎','Terminer la mission','Callisthénie, CINDY ou kettlebell'],['water','◇','Boire suffisamment','Objectif personnel : 6 à 8 verres'],['walk','↗','Bouger en plus','10 minutes de marche active']];
   document.querySelector('#goalList').innerHTML=goals.map(g=>`<button class="goal-item ${doneGoals.includes(g[0])?'done':''}" data-goal="${g[0]}"><span class="goal-check"></span><span class="goal-icon">${g[1]}</span><span class="goal-text"><strong>${g[2]}</strong><small>${g[3]}</small></span></button>`).join('');
   document.querySelector('#goalScore').textContent=`${doneGoals.length}/3`;
-  renderPlan();renderProgress();fillSettings();
+  renderPlan();renderProgress();fillSettings();renderSessionPreview();
 }
 function renderPlan(){
   const monday=new Date();monday.setDate(monday.getDate()-((monday.getDay()+6)%7));
   document.querySelector('#weekStrip').innerHTML=Array.from({length:7},(_,i)=>{const d=new Date(monday);d.setDate(d.getDate()+i);const done=state.history.some(h=>h.date===dateKey(d));return `<div class="week-day ${dateKey(d)===dateKey()?'today':''} ${done?'done':''}"><small>${DAY_NAMES[d.getDay()]}</small><strong>${d.getDate()}</strong></div>`}).join('');
   const todayIndex=(new Date().getDay()+6)%7;
-  document.querySelector('#planList').innerHTML=PROGRAM.map((p,i)=>`<article class="plan-card ${i===todayIndex?'today':''}"><span class="plan-number">${String(i+1).padStart(2,'0')}</span><span class="plan-info"><strong>${p.title}</strong><small>${p.focus} · ${state.duration} min</small></span><span class="plan-status">${i<todayIndex?'✓':i===todayIndex?'→':'·'}</span></article>`).join('');
+  document.querySelector('#planList').innerHTML=Array.from({length:7},(_,i)=>{const d=new Date(monday);d.setDate(d.getDate()+i);return programForDate(d,state.duration,state.planSeed)}).map((p,i)=>`<article class="plan-card ${i===todayIndex?'today':''}"><span class="plan-number">${String(i+1).padStart(2,'0')}</span><span class="plan-info"><strong>${p.title}</strong><small>${p.focus} · ${state.duration} min</small></span><span class="plan-status">${state.history.some(h=>{const d=new Date(monday);d.setDate(d.getDate()+i);return h.date===dateKey(d)})?'✓':i===todayIndex?'→':'·'}</span></article>`).join('');
 }
 function renderProgress(){
   document.querySelector('#totalSessions').textContent=state.history.length;
-  document.querySelector('#totalMinutes').textContent=state.history.reduce((n,h)=>n+h.minutes,0);
+  document.querySelector('#totalMinutes').textContent=Math.round(state.history.reduce((n,h)=>n+h.minutes,0)*10)/10;
   document.querySelector('#totalCalories').textContent=state.history.reduce((n,h)=>n+(h.calories||estimatedCalories(PROGRAM.find(p=>p.title===h.title)||PROGRAM[0],h.minutes)),0);
   const days=Array.from({length:28},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(27-i));return d});
   document.querySelector('#activityGrid').innerHTML=days.map(d=>`<span class="activity-cell ${state.history.some(h=>h.date===dateKey(d))?'active':''} ${dateKey(d)===dateKey()?'today':''}" title="${d.toLocaleDateString('fr-FR')}"></span>`).join('');
@@ -114,10 +113,7 @@ function renderProgress(){
 }
 function getStreak(){let n=0,d=new Date();if(!state.history.some(h=>h.date===dateKey(d)))d.setDate(d.getDate()-1);while(state.history.some(h=>h.date===dateKey(d))){n++;d.setDate(d.getDate()-1)}return n}
 function fillSettings(){nameInput.value=state.name==='soldat'?'':state.name;durationSelect.value=state.duration;levelSelect.value=state.level;weightInput.value=state.weight;reminderTime.value=state.reminder}
-function buildTimeline(){
-  const p=todayProgram(),work=state.duration===20?60:45,rest=state.duration===20?20:15;
-  return [{type:'prep',seconds:10,exercise:EXERCISES[p.ids[0]],index:-1},...p.ids.flatMap((id,i)=>[{type:'work',seconds:work,exercise:EXERCISES[id],index:i},...(i<p.ids.length-1?[{type:'rest',seconds:rest,exercise:EXERCISES[p.ids[i+1]],index:i}]:[])])];
-}
+function buildTimeline(program=todayProgram()){return timelineForProgram(program,EXERCISES)}
 function prepareAudio(){if(!audioContext)audioContext=new (window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume()}
 function beep(){
   if(!state.sound||!audioContext)return;
@@ -125,33 +121,33 @@ function beep(){
   oscillator.type='sine';oscillator.frequency.setValueAtTime(880,now);gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.22,now+.015);gain.gain.exponentialRampToValueAtTime(.0001,now+.16);oscillator.connect(gain);gain.connect(audioContext.destination);oscillator.start(now);oscillator.stop(now+.18);
 }
 function updateSoundButton(){const button=document.querySelector('#soundToggle');button.textContent=state.sound?'♪':'♩';button.classList.toggle('sound-off',!state.sound);button.setAttribute('aria-label',state.sound?'Couper les signaux sonores':'Activer les signaux sonores')}
-function startWorkout(){prepareAudio();session={timeline:buildTimeline(),position:0,remaining:0,running:true,elapsed:0};loadPhase();workoutPlayer.showModal();timerId=setInterval(tick,1000)}
+function startWorkout(){prepareAudio();const program=todayProgram();session={program,date:dateKey(),minutes:state.duration,timeline:buildTimeline(program),position:0,remaining:0,running:true,elapsed:0};loadPhase();workoutPlayer.showModal();timerId=setInterval(tick,1000)}
 function loadPhase(){const phase=session.timeline[session.position];session.remaining=phase.seconds;updatePlayer()}
-function tick(){if(!session?.running)return;const phase=session.timeline[session.position];if(session.remaining>1){session.remaining--;if(session.remaining<=3)beep();if(phase.type!=='prep')session.elapsed++;updatePlayer()}else{if(phase.type!=='prep')session.elapsed++;advance(1)}}
+function tick(){if(!session?.running)return;const phase=session.timeline[session.position];if(session.remaining>1){session.remaining--;if(session.remaining<=3)beep();session.elapsed++;updatePlayer()}else{session.elapsed++;advance(1)}}
 function advance(delta){const next=session.position+delta;if(next<0)return;if(next>=session.timeline.length){finishWorkout();return}session.position=next;loadPhase()}
 function updatePlayer(){
   const p=session.timeline[session.position],isRest=p.type==='rest',isPrep=p.type==='prep';
-  playerPhase.textContent=isPrep?'DÉPART IMMINENT':isRest?'RÉCUPÉRATION':'AU TRAVAIL';playerStep.textContent=isPrep?'LA SÉANCE VA COMMENCER':isRest?'PROCHAIN EXERCICE':`EXERCICE ${p.index+1} SUR 12`;
-  exerciseCategory.textContent=isPrep?'PRÉPARE-TOI':isRest?'RESPIRE & PRÉPARE-TOI':p.exercise.cat;exerciseName.textContent=isPrep?`Premier : ${p.exercise.name}`:isRest?`Ensuite : ${p.exercise.name}`:p.exercise.name;
-  exerciseFigure.innerHTML=svg(p.exercise.pose);exerciseTip.textContent=isRest?'Marche sur place, relâche les épaules et reprends ton souffle.':p.exercise.tip;
-  movementSteps.innerHTML=((isRest||isPrep)?['Marche doucement sur place.','Inspire par le nez et expire lentement.','Observe le prochain mouvement et prépare ta position.']:INSTRUCTIONS[p.exercise.pose]).map(step=>`<li>${step}</li>`).join('');
+  playerPhase.textContent=isPrep?'DÉPART IMMINENT':isRest?(p.transition?'CHANGEMENT DE THÈME':'RESPIRATION'):'AU TRAVAIL';playerStep.textContent=isPrep?'LA SÉANCE VA COMMENCER':isRest?'PROCHAIN EXERCICE':`EXERCICE ${p.index+1} SUR ${session.program.ids.length}`;
+  exerciseCategory.textContent=isPrep?'PRÉPARE-TOI':p.label;exerciseName.textContent=isPrep?`Premier : ${p.exercise.name}`:isRest?`Ensuite : ${p.exercise.name}`:p.exercise.name;
+  exerciseFigure.innerHTML=exerciseIllustration(p.exercise);exerciseTip.textContent=isRest?'Marche sur place, relâche les épaules et reprends ton souffle.':p.exercise.tip+(p.exercise.imageNote?' '+p.exercise.imageNote:'');
+  movementSteps.innerHTML=((isRest||isPrep)?['Marche doucement sur place.','Inspire par le nez et expire lentement.','Observe le prochain mouvement et prépare ta position.']:(p.exercise.steps||INSTRUCTIONS[p.exercise.pose])).map(step=>`<li>${step}</li>`).join('');
   timerDisplay.textContent=`${String(Math.floor(session.remaining/60)).padStart(2,'0')}:${String(session.remaining%60).padStart(2,'0')}`;
   timerRing.style.setProperty('--progress',`${Math.max(0,session.remaining/p.seconds)*360}deg`);
   timerCaption.textContent=isPrep?'AVANT LE DÉPART':isRest?'RÉCUPÉRATION':'TEMPS RESTANT';
-  liveCalories.textContent=Math.round(todayProgram().met*3.5*state.weight/200*(session.elapsed/60));
-  playerProgress.style.width=`${((session.position+(1-session.remaining/p.seconds))/session.timeline.length)*100}%`;
+  liveCalories.textContent=Math.round(session.program.met*3.5*state.weight/200*(session.elapsed/60));
+  playerProgress.style.width=`${(session.timeline.slice(0,session.position).reduce((sum,phase)=>sum+phase.seconds,0)+p.seconds-session.remaining)/(session.minutes*60)*100}%`;
   pauseLabel.textContent=session.running?'Pause':'Reprendre';pauseTimer.querySelector('.pause-symbol').textContent=session.running?'Ⅱ':'▶';pauseTimer.classList.toggle('paused',!session.running);
   document.title=`${session.remaining}s · ${p.exercise.name} — Callisthenut`;
 }
 function finishWorkout(){
-  clearInterval(timerId);const p=todayProgram(),calories=estimatedCalories(p);state.history.push({id:Date.now(),date:dateKey(),title:p.title,minutes:Number(state.duration),calories});
+  clearInterval(timerId);const p=session.program,minutes=Math.round(session.elapsed/60*10)/10,calories=estimatedCalories(p,minutes);state.history.push({id:Date.now(),date:session.date,title:p.title,minutes,calories});
   completeDailyWorkout();saveState();session=null;workoutPlayer.close();document.title='Callisthenut';render();
-  finishMinutes.textContent=state.duration;finishCalories.textContent=calories;finishExercises.textContent=p.ids.length;finishMetricLabel.textContent='EXERCICES';finishScreen.showModal();
+  finishMinutes.textContent=minutes;finishCalories.textContent=calories;finishExercises.textContent=p.ids.length;finishMetricLabel.textContent='EXERCICES';finishScreen.showModal();
 }
 function closeWorkout(){clearInterval(timerId);session=null;workoutPlayer.close();document.title='Callisthenut'}
-function cindyConfig(variant){return variant==='classic'?{name:'CINDY classique',minutes:20,met:8,reps:30,moves:[['5','Tractions','Menton au-dessus de la barre'],['10','Pompes','Poitrine proche du sol'],['15','Squats','Hanches sous les genoux']]}:{name:'CINDY débutant',minutes:12,met:6,reps:18,moves:[['3','Tirages horizontaux','Sous une table parfaitement stable'],['6','Pompes inclinées','Mains sur un support stable'],['9','Squats','Amplitude confortable']]}}
+function cindyConfig(variant){return variant==='classic'?{name:'CINDY classique',minutes:20,met:8,reps:30,moves:[['5','Tractions','Menton au-dessus de la barre'],['10','Pompes','Poitrine proche du sol'],['15','Squats','Hanches sous les genoux']]}:{name:'CINDY débutant',minutes:15,met:6,reps:18,moves:[['3','Tirages horizontaux','Sous une table parfaitement stable'],['6','Pompes inclinées','Mains sur un support stable'],['9','Squats','Amplitude confortable']]}}
 function startCindy(variant){
-  prepareAudio();const config=cindyConfig(variant);cindySession={variant,config,remaining:config.minutes*60,prep:10,rounds:0,running:true};
+  prepareAudio();const config=cindyConfig(variant);cindySession={variant,config,remaining:config.minutes*60-10,prep:10,rounds:0,running:true};
   document.querySelector('#cindySound').textContent=state.sound?'♪':'♩';
   document.querySelector('#cindyLevelLabel').textContent=config.name.toUpperCase();document.querySelector('#cindyMovements').innerHTML=config.moves.map(move=>`<div class="cindy-movement"><b>${move[0]}</b><span><strong>${move[1]}</strong><small>${move[2]}</small></span></div>`).join('');
   updateCindy();document.querySelector('#cindyPlayer').showModal();cindyTimerId=setInterval(tickCindy,1000);
@@ -163,9 +159,9 @@ function finishCindyWorkout(){
   if(!cindySession)return;clearInterval(cindyTimerId);const {config,rounds,remaining}=cindySession,elapsed=Math.max(1,Math.round((config.minutes*60-remaining)/60)),calories=Math.round(config.met*3.5*state.weight/200*elapsed),reps=rounds*config.reps;
   state.history.push({id:Date.now(),date:dateKey(),title:config.name,minutes:elapsed,calories,rounds,reps});completeDailyWorkout();saveState();cindySession=null;document.querySelector('#cindyPlayer').close();render();finishMinutes.textContent=elapsed;finishCalories.textContent=calories;finishExercises.textContent=reps;finishMetricLabel.textContent='RÉPÉTITIONS';finishScreen.showModal();
 }
-function kettlebellConfig(variant){return variant==='classic'?{name:'Kettlebell essentiel',minutes:18,met:7.5,reps:38,moves:[['10','Deadlifts','Pousse les hanches en arrière, dos neutre'],['8/bras','Rowings unilatéraux','Coude vers la hanche, buste stable'],['12','Swings russes','Puissance des hanches, pas des bras'],['20 s','Gainage avec tirage','Option : planche statique sans charge']]}:{name:'Kettlebell initiation',minutes:12,met:5.8,reps:30,moves:[['8','Deadlifts','Charge près du corps, dos neutre'],['6/bras','Rowings assistés','Main libre sur un support stable'],['10','Goblet squats','Kettlebell contre la poitrine'],['20 s','Suitcase hold','Debout, grandis-toi sans pencher']]}}
+function kettlebellConfig(variant){return variant==='classic'?{name:'Kettlebell essentiel',minutes:18,met:7.5,reps:38,moves:[['10','Deadlifts','Pousse les hanches en arrière, dos neutre'],['8/bras','Rowings unilatéraux','Coude vers la hanche, buste stable'],['12','Swings russes','Puissance des hanches, pas des bras'],['20 s','Gainage avec tirage','Option : planche statique sans charge']]}:{name:'Kettlebell initiation',minutes:15,met:5.8,reps:30,moves:[['8','Deadlifts','Charge près du corps, dos neutre'],['6/bras','Rowings assistés','Main libre sur un support stable'],['10','Goblet squats','Kettlebell contre la poitrine'],['20 s','Suitcase hold','Debout, grandis-toi sans pencher']]}}
 function startKettlebell(variant){
-  prepareAudio();const config=kettlebellConfig(variant);kettlebellSession={variant,config,remaining:config.minutes*60,prep:10,rounds:0,running:true};
+  prepareAudio();const config=kettlebellConfig(variant);kettlebellSession={variant,config,remaining:config.minutes*60-10,prep:10,rounds:0,running:true};
   document.querySelector('#kettlebellSound').textContent=state.sound?'♪':'♩';document.querySelector('#kettlebellMovements').innerHTML=config.moves.map(move=>`<div class="cindy-movement"><b>${move[0]}</b><span><strong>${move[1]}</strong><small>${move[2]}</small></span></div>`).join('');
   updateKettlebell();document.querySelector('#kettlebellPlayer').showModal();kettlebellTimerId=setInterval(tickKettlebell,1000);
 }
@@ -177,7 +173,7 @@ function finishKettlebellWorkout(){
   state.history.push({id:Date.now(),date:dateKey(),title:config.name,minutes:elapsed,calories,rounds,reps});completeDailyWorkout();saveState();kettlebellSession=null;document.querySelector('#kettlebellPlayer').close();render();finishMinutes.textContent=elapsed;finishCalories.textContent=calories;finishExercises.textContent=rounds;finishMetricLabel.textContent='TOURS';finishScreen.showModal();
 }
 function scheduleReminder(){
-  clearTimeout(reminderId);if(Notification.permission!=='granted')return;
+  clearTimeout(reminderId);if(!('Notification' in window)||Notification.permission!=='granted')return;
   const [h,m]=state.reminder.split(':').map(Number),now=new Date(),next=new Date();next.setHours(h,m,0,0);if(next<=now)next.setDate(next.getDate()+1);
   reminderId=setTimeout(()=>{new Notification('Callisthenut',{body:'Ta mission du jour t’attend. 15 minutes, pas d’excuse.',icon:'icon.svg'});scheduleReminder()},next-now);
 }
@@ -215,3 +211,19 @@ document.querySelector('#saveSettings').addEventListener('click',()=>{state.name
 window.addEventListener('keydown',e=>{if(e.code==='Space'&&session){e.preventDefault();session.running=!session.running;updatePlayer()}});
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 render();updateSoundButton();scheduleReminder();
+
+function renderSessionPreview(){
+  const p=todayProgram();
+  document.querySelector('#sessionPreview').innerHTML=p.blocks.map(b=>`<details class="session-block"><summary>${b.label}<small>${b.ids.length} exercices · 40 s chacun</small></summary>${b.ids.map(id=>exerciseCard(EXERCISES[id])).join('')}</details>`).join('');
+}
+function exerciseCard(e){return `<article class="catalog-exercise"><div class="catalog-picture">${exerciseIllustration(e)}</div><div><strong>${e.name}</strong>${e.imageNote?`<p class="timing-note">${e.imageNote}</p>`:''}<ol>${(e.steps||INSTRUCTIONS[e.pose]).map(s=>`<li>${s}</li>`).join('')}</ol></div></article>`}
+function renderCatalog(){
+  const value=document.querySelector('#catalogFilter').value;
+  const entries=CATALOG.filter(e=>!value||e.stage===value||e.themes.includes(value));
+  document.querySelector('#catalogCount').textContent=`${entries.length} exercices`;
+  document.querySelector('#exerciseCatalog').innerHTML=Object.entries(STAGES).map(([stage,label])=>{const group=entries.filter(e=>e.stage===stage);return group.length?`<details class="session-block"><summary>${label}<small>${group.length} exercices</small></summary>${group.map(exerciseCard).join('')}</details>`:''}).join('');
+}
+document.querySelector('#catalogFilter').addEventListener('change',renderCatalog);
+renderCatalog();
+document.querySelector('#workoutPlayer').addEventListener('cancel',event=>{event.preventDefault();closeWorkout()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!session)render()});

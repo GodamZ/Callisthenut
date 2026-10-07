@@ -8,7 +8,7 @@
   <title>Callisthenut</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
   <div class="app-shell">
@@ -44,17 +44,18 @@
           </div>
         </section>
 
+        <section class="section-block"><div class="section-heading"><h2>Le détail de ta séance</h2></div><p class="timing-note">40 s de mouvement · 10 s de respiration · 30 s entre les blocs.<br>Échauffements et étirements inclus, avec 10 s pour se préparer.</p><div id="sessionPreview"></div></section>
         <section class="cindy-card">
           <div class="cindy-card-top"><span class="cindy-monogram">C</span><div><p class="eyebrow">AMRAP · POIDS DU CORPS</p><h2>CINDY</h2><p>Tractions, pompes et squats. Enchaîne le plus de tours possible.</p></div></div>
           <div class="cindy-sequence"><span><b>5</b> tractions</span><i>→</i><span><b>10</b> pompes</span><i>→</i><span><b>15</b> squats</span></div>
-          <div class="cindy-actions"><button class="cindy-start primary" id="startCindyClassic"><span>Classique</span><small>20 MIN</small></button><button class="cindy-start" id="startCindyBeginner"><span>Débutant</span><small>12 MIN</small></button></div>
+          <div class="cindy-actions"><button class="cindy-start primary" id="startCindyClassic"><span>Classique</span><small>20 MIN</small></button><button class="cindy-start" id="startCindyBeginner"><span>Débutant</span><small>15 MIN</small></button></div>
         </section>
 
         <section class="kettlebell-card">
           <div class="cindy-card-top"><span class="kettlebell-monogram">KB</span><div><p class="eyebrow">DOS · CENTRE · CONDITIONNEMENT</p><h2>Kettlebell</h2><p>Renforce la chaîne postérieure et augmente la dépense énergétique avec une seule kettlebell.</p></div></div>
           <div class="cindy-sequence kettlebell-sequence"><span><b>10</b> deadlifts</span><i>→</i><span><b>8/bras</b> rowings</span><i>→</i><span><b>12</b> swings</span><i>→</i><span><b>20 s</b> gainage</span></div>
           <p class="kettlebell-note">La perte de graisse est globale : régularité, alimentation et dépense énergétique font la différence.</p>
-          <div class="cindy-actions"><button class="kettlebell-start primary" id="startKettlebellClassic"><span>Essentiel</span><small>18 MIN</small></button><button class="kettlebell-start" id="startKettlebellBeginner"><span>Initiation</span><small>12 MIN</small></button></div>
+          <div class="cindy-actions"><button class="kettlebell-start primary" id="startKettlebellClassic"><span>Essentiel</span><small>18 MIN</small></button><button class="kettlebell-start" id="startKettlebellBeginner"><span>Initiation</span><small>15 MIN</small></button></div>
         </section>
 
         <section class="section-block">
@@ -68,7 +69,8 @@
       <section class="view" id="planView" data-view="plan">
         <div class="page-heading"><p class="eyebrow">PROGRAMME</p><h1>Ta semaine</h1><p>Une progression équilibrée, pensée pour bouger chaque jour.</p></div>
         <div class="week-strip" id="weekStrip"></div>
-        <div class="plan-list" id="planList"></div>
+        <div class="plan-list" id="planList"></div><p class="timing-note">Deux thèmes tirés au sort chaque jour, différents de ceux de la veille. Le programme reste identique lorsque tu reviens dans l’application. Les mouvements peuvent solliciter plusieurs muscles.</p>
+        <section class="section-block"><h2>Bibliothèque des exercices</h2><label for="catalogFilter">Filtrer par thème</label><select id="catalogFilter"><option value="">Tous les exercices</option><option value="warm">Échauffement</option><option value="legs">Jambes & fessiers</option><option value="abs">Abdominaux</option><option value="arms">Bras & épaules</option><option value="back">Dos</option><option value="cardio">Cardio</option><option value="stretch">Étirements</option></select><p id="catalogCount" class="timing-note" role="status"></p><div id="exerciseCatalog"></div></section>
       </section>
 
       <section class="view" id="progressView" data-view="progress">
@@ -178,6 +180,8 @@
     </form>
   </dialog>
   <div class="toast" id="toast" role="status"></div>
-  <script src="app.js?v=9"></script>
+  <script src="exercise-catalog.js?v=11"></script>
+  <script src="workout-planner.js?v=11"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>
