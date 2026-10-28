@@ -57,6 +57,21 @@ test('player runs prep, work, breathing, theme transition and completion with co
   assert.equal(element('#finishExercises').textContent,minutes===15?16:22);
  }
 });
+test('preparation and both recovery types explain the upcoming movement',()=>{
+ run('startWorkout()');
+ for(const position of [0, ...run('session.timeline.map((p,i)=>p.type==="rest"?i:-1).filter(i=>i>=0)')]){
+  run(`session.position=${position};loadPhase()`);
+  const exercise=run('session.timeline[session.position].exercise');
+  for(const step of exercise.steps||run('INSTRUCTIONS[session.timeline[session.position].exercise.pose]'))assert.ok(element('#movementSteps').innerHTML.includes(step));
+  assert.ok(element('#exerciseTip').textContent.startsWith(exercise.tip));
+  if(position>0){
+   assert.equal(element('#playerPhase').textContent,'RÉCUPÉRATION');
+   assert.equal(run('session.timeline[session.position+1].exercise.id'),exercise.id);
+  }
+ }
+ run('closeWorkout()');
+});
+
 test('navigation and cancellation do not record an unperformed full session',()=>{
  const before=run('state.history.length');run('startWorkout();advance(1);advance(-1);closeWorkout()');assert.equal(run('state.history.length'),before);
 });
@@ -72,3 +87,27 @@ test('precache includes every HTML script/style URL and every referenced image',
  for(const match of fs.readFileSync('index.html','utf8').matchAll(/(?:src|href)="([^"#]+\.(?:js|css)(?:\?[^" ]+)?)"/g))assert.ok(assets.includes(match[1]),match[1]);
  for(const e of run('CATALOG'))if(e.image)assert.ok(assets.includes(e.image),e.image);
 });
+
+ test('screen wake lock follows sessions, visibility and handles refusal',async()=>{
+  let requests=0,releases=0;
+  context.navigator.wakeLock={request:async type=>{
+   assert.equal(type,'screen');requests++;
+   return {addEventListener(){},release:async()=>{releases++}};
+  }};
+  for(const [start,close] of [['startWorkout()','closeWorkout()'],['startCindy("classic")','closeCindyWorkout()'],['startKettlebell("classic")','closeKettlebellWorkout()']]){
+   run(start);await run('Promise.resolve()');
+   assert.equal(run('screenWakeLock!==null'),true);
+   context.document.hidden=true;await run('syncScreenWakeLock()');
+   assert.equal(run('screenWakeLock'),null);
+   context.document.hidden=false;await run('syncScreenWakeLock()');
+   assert.equal(run('screenWakeLock!==null'),true);
+   run(close);await run('Promise.resolve()');
+   assert.equal(run('screenWakeLock'),null);
+  }
+  assert.equal(requests,6);assert.equal(releases,6);
+  context.navigator.wakeLock.request=async()=>{throw new Error('Denied')};
+  run('startWorkout()');await run('Promise.resolve()');
+  assert.equal(run('screenWakeLock'),null);
+  assert.equal(run('session.running'),true);
+  run('closeWorkout()');delete context.navigator.wakeLock;
+ });

@@ -48,6 +48,26 @@ state.duration=Number(state.duration)===20?20:15;
 if(!Number.isInteger(state.planSeed)){state.planSeed=crypto.getRandomValues(new Uint32Array(1))[0];saveState()}
 let session=null,timerId=null,reminderId=null,audioContext=null,cindySession=null,cindyTimerId=null,kettlebellSession=null,kettlebellTimerId=null;
 
+let screenWakeLock=null,wakeLockPending=false;
+function needsScreenAwake(){return Boolean(session||cindySession||kettlebellSession)&&!document.hidden}
+async function syncScreenWakeLock(){
+  if(!needsScreenAwake()){
+    const lock=screenWakeLock;screenWakeLock=null;
+    if(lock)try{await lock.release()}catch{}
+    return;
+  }
+  if(!navigator.wakeLock||screenWakeLock||wakeLockPending)return;
+  wakeLockPending=true;
+  try{
+    const lock=await navigator.wakeLock.request('screen');
+    if(!needsScreenAwake()){await lock.release();return}
+    screenWakeLock=lock;
+    lock.addEventListener('release',()=>{if(screenWakeLock===lock)screenWakeLock=null});
+  }catch{
+    // The device may refuse the request (for example in battery saver mode).
+  }finally{wakeLockPending=false}
+}
+
 function loadState(){
   const base={name:'soldat',duration:15,level:1,weight:70,reminder:'18:30',sound:true,goals:{},history:[]};
   try{return {...base,...JSON.parse(localStorage.getItem('callisthenut-state')||localStorage.getItem('callisterik-state')||'{}')}}catch{return base}
@@ -121,16 +141,18 @@ function beep(){
   oscillator.type='sine';oscillator.frequency.setValueAtTime(880,now);gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.22,now+.015);gain.gain.exponentialRampToValueAtTime(.0001,now+.16);oscillator.connect(gain);gain.connect(audioContext.destination);oscillator.start(now);oscillator.stop(now+.18);
 }
 function updateSoundButton(){const button=document.querySelector('#soundToggle');button.textContent=state.sound?'♪':'♩';button.classList.toggle('sound-off',!state.sound);button.setAttribute('aria-label',state.sound?'Couper les signaux sonores':'Activer les signaux sonores')}
-function startWorkout(){prepareAudio();const program=todayProgram();session={program,date:dateKey(),minutes:state.duration,timeline:buildTimeline(program),position:0,remaining:0,running:true,elapsed:0};loadPhase();workoutPlayer.showModal();timerId=setInterval(tick,1000)}
+function startWorkout(){prepareAudio();const program=todayProgram();session={program,date:dateKey(),minutes:state.duration,timeline:buildTimeline(program),position:0,remaining:0,running:true,elapsed:0};loadPhase();workoutPlayer.showModal();timerId=setInterval(tick,1000);syncScreenWakeLock()}
 function loadPhase(){const phase=session.timeline[session.position];session.remaining=phase.seconds;updatePlayer()}
 function tick(){if(!session?.running)return;const phase=session.timeline[session.position];if(session.remaining>1){session.remaining--;if(session.remaining<=3)beep();session.elapsed++;updatePlayer()}else{session.elapsed++;advance(1)}}
 function advance(delta){const next=session.position+delta;if(next<0)return;if(next>=session.timeline.length){finishWorkout();return}session.position=next;loadPhase()}
 function updatePlayer(){
   const p=session.timeline[session.position],isRest=p.type==='rest',isPrep=p.type==='prep';
-  playerPhase.textContent=isPrep?'DÉPART IMMINENT':isRest?(p.transition?'CHANGEMENT DE THÈME':'RESPIRATION'):'AU TRAVAIL';playerStep.textContent=isPrep?'LA SÉANCE VA COMMENCER':isRest?'PROCHAIN EXERCICE':`EXERCICE ${p.index+1} SUR ${session.program.ids.length}`;
+  workoutPlayer.classList.toggle('is-recovery',isRest);
+  playerPhase.textContent=isPrep?'DÉPART IMMINENT':isRest?'RÉCUPÉRATION':'AU TRAVAIL';playerStep.textContent=isPrep?'LA SÉANCE VA COMMENCER':isRest?(p.transition?'CHANGEMENT DE THÈME · PROCHAIN EXERCICE':'PROCHAIN EXERCICE'):`EXERCICE ${p.index+1} SUR ${session.program.ids.length}`;
   exerciseCategory.textContent=isPrep?'PRÉPARE-TOI':p.label;exerciseName.textContent=isPrep?`Premier : ${p.exercise.name}`:isRest?`Ensuite : ${p.exercise.name}`:p.exercise.name;
-  exerciseFigure.innerHTML=exerciseIllustration(p.exercise);exerciseTip.textContent=isRest?'Marche sur place, relâche les épaules et reprends ton souffle.':p.exercise.tip+(p.exercise.imageNote?' '+p.exercise.imageNote:'');
-  movementSteps.innerHTML=((isRest||isPrep)?['Marche doucement sur place.','Inspire par le nez et expire lentement.','Observe le prochain mouvement et prépare ta position.']:(p.exercise.steps||INSTRUCTIONS[p.exercise.pose])).map(step=>`<li>${step}</li>`).join('');
+  exerciseFigure.innerHTML=exerciseIllustration(p.exercise);exerciseTip.textContent=p.exercise.tip+(p.exercise.imageNote?' '+p.exercise.imageNote:'');
+  movementSteps.setAttribute('aria-label',isRest||isPrep?'Explication du prochain exercice':'Explication du mouvement');
+  movementSteps.innerHTML=(p.exercise.steps||INSTRUCTIONS[p.exercise.pose]).map(step=>`<li>${step}</li>`).join('');
   timerDisplay.textContent=`${String(Math.floor(session.remaining/60)).padStart(2,'0')}:${String(session.remaining%60).padStart(2,'0')}`;
   timerRing.style.setProperty('--progress',`${Math.max(0,session.remaining/p.seconds)*360}deg`);
   timerCaption.textContent=isPrep?'AVANT LE DÉPART':isRest?'RÉCUPÉRATION':'TEMPS RESTANT';
@@ -141,36 +163,36 @@ function updatePlayer(){
 }
 function finishWorkout(){
   clearInterval(timerId);const p=session.program,minutes=Math.round(session.elapsed/60*10)/10,calories=estimatedCalories(p,minutes);state.history.push({id:Date.now(),date:session.date,title:p.title,minutes,calories});
-  completeDailyWorkout();saveState();session=null;workoutPlayer.close();document.title='Callisthenut';render();
+  completeDailyWorkout();saveState();session=null;syncScreenWakeLock();workoutPlayer.close();document.title='Callisthenut';render();
   finishMinutes.textContent=minutes;finishCalories.textContent=calories;finishExercises.textContent=p.ids.length;finishMetricLabel.textContent='EXERCICES';finishScreen.showModal();
 }
-function closeWorkout(){clearInterval(timerId);session=null;workoutPlayer.close();document.title='Callisthenut'}
+function closeWorkout(){clearInterval(timerId);session=null;syncScreenWakeLock();workoutPlayer.close();document.title='Callisthenut'}
 function cindyConfig(variant){return variant==='classic'?{name:'CINDY classique',minutes:20,met:8,reps:30,moves:[['5','Tractions','Menton au-dessus de la barre'],['10','Pompes','Poitrine proche du sol'],['15','Squats','Hanches sous les genoux']]}:{name:'CINDY débutant',minutes:15,met:6,reps:18,moves:[['3','Tirages horizontaux','Sous une table parfaitement stable'],['6','Pompes inclinées','Mains sur un support stable'],['9','Squats','Amplitude confortable']]}}
 function startCindy(variant){
   prepareAudio();const config=cindyConfig(variant);cindySession={variant,config,remaining:config.minutes*60-10,prep:10,rounds:0,running:true};
   document.querySelector('#cindySound').textContent=state.sound?'♪':'♩';
   document.querySelector('#cindyLevelLabel').textContent=config.name.toUpperCase();document.querySelector('#cindyMovements').innerHTML=config.moves.map(move=>`<div class="cindy-movement"><b>${move[0]}</b><span><strong>${move[1]}</strong><small>${move[2]}</small></span></div>`).join('');
-  updateCindy();document.querySelector('#cindyPlayer').showModal();cindyTimerId=setInterval(tickCindy,1000);
+  updateCindy();document.querySelector('#cindyPlayer').showModal();cindyTimerId=setInterval(tickCindy,1000);syncScreenWakeLock();
 }
 function tickCindy(){if(!cindySession?.running)return;if(cindySession.prep>0){if(cindySession.prep>1){cindySession.prep--;if(cindySession.prep<=3)beep()}else cindySession.prep=0}else if(cindySession.remaining>1){cindySession.remaining--;if(cindySession.remaining<=3)beep()}else{cindySession.remaining=0;finishCindyWorkout()}updateCindy()}
 function updateCindy(){if(!cindySession)return;const value=cindySession.prep||cindySession.remaining;document.querySelector('#cindyTimer').textContent=`${String(Math.floor(value/60)).padStart(2,'0')}:${String(value%60).padStart(2,'0')}`;document.querySelector('#cindyRounds').textContent=cindySession.rounds;document.querySelector('#pauseCindy').textContent=cindySession.running?'Ⅱ  Pause':'▶  Reprendre';document.querySelector('#cindyLevelLabel').textContent=cindySession.prep?`DÉPART DANS ${cindySession.prep} SECONDES`:cindySession.config.name.toUpperCase()}
-function closeCindyWorkout(){clearInterval(cindyTimerId);cindySession=null;document.querySelector('#cindyPlayer').close()}
+function closeCindyWorkout(){clearInterval(cindyTimerId);cindySession=null;syncScreenWakeLock();document.querySelector('#cindyPlayer').close()}
 function finishCindyWorkout(){
   if(!cindySession)return;clearInterval(cindyTimerId);const {config,rounds,remaining}=cindySession,elapsed=Math.max(1,Math.round((config.minutes*60-remaining)/60)),calories=Math.round(config.met*3.5*state.weight/200*elapsed),reps=rounds*config.reps;
-  state.history.push({id:Date.now(),date:dateKey(),title:config.name,minutes:elapsed,calories,rounds,reps});completeDailyWorkout();saveState();cindySession=null;document.querySelector('#cindyPlayer').close();render();finishMinutes.textContent=elapsed;finishCalories.textContent=calories;finishExercises.textContent=reps;finishMetricLabel.textContent='RÉPÉTITIONS';finishScreen.showModal();
+  state.history.push({id:Date.now(),date:dateKey(),title:config.name,minutes:elapsed,calories,rounds,reps});completeDailyWorkout();saveState();cindySession=null;syncScreenWakeLock();document.querySelector('#cindyPlayer').close();render();finishMinutes.textContent=elapsed;finishCalories.textContent=calories;finishExercises.textContent=reps;finishMetricLabel.textContent='RÉPÉTITIONS';finishScreen.showModal();
 }
 function kettlebellConfig(variant){return variant==='classic'?{name:'Kettlebell essentiel',minutes:18,met:7.5,reps:38,moves:[['10','Deadlifts','Pousse les hanches en arrière, dos neutre'],['8/bras','Rowings unilatéraux','Coude vers la hanche, buste stable'],['12','Swings russes','Puissance des hanches, pas des bras'],['20 s','Gainage avec tirage','Option : planche statique sans charge']]}:{name:'Kettlebell initiation',minutes:15,met:5.8,reps:30,moves:[['8','Deadlifts','Charge près du corps, dos neutre'],['6/bras','Rowings assistés','Main libre sur un support stable'],['10','Goblet squats','Kettlebell contre la poitrine'],['20 s','Suitcase hold','Debout, grandis-toi sans pencher']]}}
 function startKettlebell(variant){
   prepareAudio();const config=kettlebellConfig(variant);kettlebellSession={variant,config,remaining:config.minutes*60-10,prep:10,rounds:0,running:true};
   document.querySelector('#kettlebellSound').textContent=state.sound?'♪':'♩';document.querySelector('#kettlebellMovements').innerHTML=config.moves.map(move=>`<div class="cindy-movement"><b>${move[0]}</b><span><strong>${move[1]}</strong><small>${move[2]}</small></span></div>`).join('');
-  updateKettlebell();document.querySelector('#kettlebellPlayer').showModal();kettlebellTimerId=setInterval(tickKettlebell,1000);
+  updateKettlebell();document.querySelector('#kettlebellPlayer').showModal();kettlebellTimerId=setInterval(tickKettlebell,1000);syncScreenWakeLock();
 }
 function tickKettlebell(){if(!kettlebellSession?.running)return;if(kettlebellSession.prep>0){if(kettlebellSession.prep>1){kettlebellSession.prep--;if(kettlebellSession.prep<=3)beep()}else kettlebellSession.prep=0}else if(kettlebellSession.remaining>1){kettlebellSession.remaining--;if(kettlebellSession.remaining<=3)beep()}else{kettlebellSession.remaining=0;finishKettlebellWorkout()}updateKettlebell()}
 function updateKettlebell(){if(!kettlebellSession)return;const value=kettlebellSession.prep||kettlebellSession.remaining;document.querySelector('#kettlebellTimer').textContent=`${String(Math.floor(value/60)).padStart(2,'0')}:${String(value%60).padStart(2,'0')}`;document.querySelector('#kettlebellRounds').textContent=kettlebellSession.rounds;document.querySelector('#pauseKettlebell').textContent=kettlebellSession.running?'Ⅱ  Pause':'▶  Reprendre';document.querySelector('#kettlebellLevelLabel').textContent=kettlebellSession.prep?`DÉPART DANS ${kettlebellSession.prep} SECONDES`:kettlebellSession.config.name.toUpperCase()}
-function closeKettlebellWorkout(){clearInterval(kettlebellTimerId);kettlebellSession=null;document.querySelector('#kettlebellPlayer').close()}
+function closeKettlebellWorkout(){clearInterval(kettlebellTimerId);kettlebellSession=null;syncScreenWakeLock();document.querySelector('#kettlebellPlayer').close()}
 function finishKettlebellWorkout(){
   if(!kettlebellSession)return;clearInterval(kettlebellTimerId);const {config,rounds,remaining}=kettlebellSession,elapsed=Math.max(1,Math.round((config.minutes*60-remaining)/60)),calories=Math.round(config.met*3.5*state.weight/200*elapsed),reps=rounds*config.reps;
-  state.history.push({id:Date.now(),date:dateKey(),title:config.name,minutes:elapsed,calories,rounds,reps});completeDailyWorkout();saveState();kettlebellSession=null;document.querySelector('#kettlebellPlayer').close();render();finishMinutes.textContent=elapsed;finishCalories.textContent=calories;finishExercises.textContent=rounds;finishMetricLabel.textContent='TOURS';finishScreen.showModal();
+  state.history.push({id:Date.now(),date:dateKey(),title:config.name,minutes:elapsed,calories,rounds,reps});completeDailyWorkout();saveState();kettlebellSession=null;syncScreenWakeLock();document.querySelector('#kettlebellPlayer').close();render();finishMinutes.textContent=elapsed;finishCalories.textContent=calories;finishExercises.textContent=rounds;finishMetricLabel.textContent='TOURS';finishScreen.showModal();
 }
 function scheduleReminder(){
   clearTimeout(reminderId);if(!('Notification' in window)||Notification.permission!=='granted')return;
@@ -226,4 +248,5 @@ function renderCatalog(){
 document.querySelector('#catalogFilter').addEventListener('change',renderCatalog);
 renderCatalog();
 document.querySelector('#workoutPlayer').addEventListener('cancel',event=>{event.preventDefault();closeWorkout()});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!session)render()});
+document.addEventListener('visibilitychange',()=>{syncScreenWakeLock();if(!document.hidden&&!session)render()});
+for(const [id,close] of [['#cindyPlayer',closeCindyWorkout],['#kettlebellPlayer',closeKettlebellWorkout]])document.querySelector(id).addEventListener('cancel',event=>{event.preventDefault();close()});
