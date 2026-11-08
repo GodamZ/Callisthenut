@@ -1,10 +1,10 @@
 # Android et Health Connect
 
-L’APK 2.5 charge désormais le site `https://godamz.github.io/Callisthenut/`. Il ne contient plus de copie figée de l’application web. Les mises à jour du site arrivent après leur publication sur GitHub Pages, sans recompilation de l’APK. Les modifications natives Android nécessitent toujours un nouvel APK.
+L’APK 2.6 charge le site `https://godamz.github.io/Callisthenut/`. Il ne contient plus de copie figée de l’application web. Les mises à jour du site arrivent après leur publication sur GitHub Pages, sans recompilation de l’APK. Les modifications natives Android nécessitent toujours un nouvel APK. Cette version déclare l’icône adaptative officielle dans le manifeste, avec variantes pour les masques Android et les icônes thématiques.
 
 ## Installer la mise à jour
 
-Fichier produit : `../artifacts/Callisthenut-2.5-debug.apk` (environ 11 Mo). Installer par-dessus la version 2.3 ou 2.4, sans la désinstaller : le certificat de signature est identique et le numéro de version augmente. Le paquet reste signé avec la clé de développement locale, sans publication Google Play.
+Fichier produit : `../artifacts/Callisthenut-2.6-debug.apk` (environ 11 Mo). Installer par-dessus la version précédente, sans la désinstaller : le certificat de signature est identique et le numéro de version augmente. Le paquet reste signé avec la clé de développement locale, sans publication Google Play.
 
 Au premier lancement, la progression de l’ancien stockage local de l’APK est copiée vers le stockage de l’origine GitHub Pages, avant le démarrage du site. Une progression déjà présente à cette origine est conservée ; aucun mélange ni écrasement. Les données locales d’origine ne sont pas effacées. Le raccourci Brave utilise son propre stockage et n’est pas importé.
 

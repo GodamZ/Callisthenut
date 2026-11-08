@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="512" android:viewportHeight="512">
+    <!-- Same emblem as icon.svg, fitted inside the adaptive icon safe area. -->
+    <group android:pivotX="256" android:pivotY="256" android:scaleX="0.9" android:scaleY="0.9">
+        <path android:pathData="M256,101 A155,155 0,1 0,256,411 A155,155 0,1 0,256,101"
+            android:fillColor="@android:color/transparent" android:strokeColor="#F0C65A" android:strokeWidth="28" />
+        <path android:pathData="M325,174c-22,-22 -48,-32 -78,-32 -68,0 -115,49 -115,115s46,114 115,114c34,0 63,-12 84,-37l-32,-31c-13,15 -29,23 -50,23 -39,0 -65,-28 -65,-69 0,-42 27,-70 65,-70 19,0 35,7 48,20z"
+            android:fillColor="#F4F2EA" />
+    </group>
+</vector>

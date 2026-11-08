@@ -133,10 +133,12 @@ test('quest claims reward calories, daily bonus once, and survive reload without
   run('state.rpg={xp:0,days:{},ledger:[]};settleDays()');
   const gain=run('claimQuest("walk",100,false)');assert.equal(gain,65);
   assert.equal(run('claimQuest("walk",100,false)'),0);
-  assert.equal(run('claimQuest("water",0,false)'),120);
-  assert.equal(run('state.rpg.xp'),185);
-  assert.equal(run('loadState().rpg.xp'),185);
-  assert.equal(run('questXp(QUESTS[0],999999)'),160);
+  assert.equal(run('claimQuest("water",0,false)'),40);
+  assert.equal(run('state.rpg.days[dateKey()].bonus'),false);
+  assert.equal(run('claimQuest("daily-strength",undefined,false)'),105);
+  assert.equal(run('state.rpg.xp'),210);
+  assert.equal(run('loadState().rpg.xp'),210);
+  assert.equal(run('questXp(QUESTS.find(q=>q.id==="workout"),999999)'),160);
  }finally{run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState()`)}
 });
 test('missed planned days lose at most 30 XP once, never below zero; unplanned days are free',()=>{
@@ -533,4 +535,47 @@ test('invalid declared activity calories are rejected before XP or history are m
   assert.equal(run('state.rpg.xp'),0);assert.equal(run('state.history.length'),0);
   assert.equal(run('questCalorieDetails(QUESTS.find(q=>q.id==="shadowboxing"),45,"0").calories'),0);
  }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+
+test('daily mini-challenge is drawn once per day, survives reload and redraws only for a new day',()=>{
+ const saved=run('JSON.stringify(state)'),originalDate=context.Date,originalCrypto=context.crypto;
+ let draws=0;const base=new Date();base.setHours(12,0,0,0);let current=base.getTime();
+ context.Date=class extends Date{constructor(...args){super(...(args.length?args:[current]))}};
+ context.crypto={getRandomValues(array){array[0]=draws++;return array}};
+ try{
+  run('state.rpg={xp:0,days:{},ledger:[]};settleDays()');
+  const first=run('dateKey()');assert.equal(run('questForId("daily-strength").name'),'10 pompes');
+  run('settleDays();settleDays()');assert.equal(draws,1);
+  assert.equal(run('loadState().rpg.days[dateKey()].miniChallenge'),'pushups');
+  assert.equal(run('state.rpg.days[dateKey()].selected.filter(id=>id==="daily-strength").length'),1);
+  const next=new Date(base);next.setDate(next.getDate()+1);current=next.getTime();run('settleDays()');
+  assert.equal(draws,2);assert.equal(run('questForId("daily-strength").name'),'20 squats');
+  assert.equal(run(`state.rpg.days[${JSON.stringify(first)}].miniChallenge`),'pushups');
+ }finally{context.Date=originalDate;context.crypto=originalCrypto;run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+test('mandatory mini-challenge cannot be removed and validates its repetitions only once',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:0,days:{},ledger:[]};state.history=[];settleDays();openChallenge("daily-strength")');
+  const name=run('questForId("daily-strength").name'),reps=run('questForId("daily-strength").reps');
+  assert.ok([10,20].includes(reps));assert.equal(element('#challengeTitle').textContent,name);
+  assert.equal(element('#challengeTarget').textContent,`${reps} répétitions`);
+  assert.equal(element('#challengeCalories').textContent,'Non estimées');
+  assert.ok(element('#goalList').innerHTML.includes('data-open-quest="daily-strength"'));
+  element('#questChoices').listeners.change({target:{dataset:{selectQuest:'daily-strength'},checked:false}});
+  assert.ok(run('state.rpg.days[dateKey()].selected.includes("daily-strength")'));
+  element('#completeChallenge').listeners.click();
+  assert.equal(run('state.rpg.xp'),25);assert.equal(run('state.rpg.days[dateKey()].claims["daily-strength"].reps'),reps);
+  assert.equal(run('state.history[0].title'),name);assert.equal(run('state.history[0].calories'),0);
+  assert.equal(run('claimQuest("daily-strength")'),0);assert.equal(run('state.rpg.xp'),25);
+  assert.ok(element('#goalList').innerHTML.includes(`${name} : terminé`));
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+test('missing an assigned mini-challenge uses the ordinary penalty without adding challenges retroactively',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:100,days:{"2020-01-01":{selected:["daily-strength"],claims:{},settled:false},"2020-01-02":{selected:[],claims:{},settled:false}},ledger:[]};settleDays();settleDays()');
+  assert.equal(run('state.rpg.xp'),90);
+  assert.equal(run('state.rpg.days["2020-01-02"].selected.length'),0);
+ }finally{run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
 });

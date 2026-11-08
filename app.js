@@ -45,6 +45,7 @@ for(const exercise of CATALOG)EXERCISES[exercise.id]={...exercise,cat:exercise.t
 const PROGRAM=[{title:'Ancienne séance',met:6.5}];
 const DAY_NAMES=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const QUESTS=[
+ {id:'daily-strength',icon:'⚡',name:'Mini-défi du jour',detail:'Renforcement · obligatoire',minutes:0,met:0,xp:25,mandatory:true},
  {id:'workout',icon:'⚔',name:'La voie du guerrier',detail:'Calisthénie · 15 min',minutes:15,met:5,xp:60},
  {id:'walk',icon:'❀',name:'Explorer les sentiers',detail:'Marche active · 20 min minimum',minutes:20,met:3.5,xp:45,flexible:true},
  {id:'run',icon:'➶',name:'La foulée du vent',detail:'Course · 15 min minimum',minutes:15,met:8,xp:60,flexible:true},
@@ -393,7 +394,16 @@ function settleDays(){
   if(loss)state.rpg.ledger.push({day,xp:-loss,label:'Quêtes inachevées'});
  }
  if(!state.rpg.days[today])state.rpg.days[today]={selected:['walk','water'],claims:{},bonus:false,settled:false};
+ const current=state.rpg.days[today];
+ if(!['pushups','squats'].includes(current.miniChallenge))current.miniChallenge=crypto.getRandomValues(new Uint32Array(1))[0]%2===0?'pushups':'squats';
+ if(!current.selected.includes('daily-strength'))current.selected.push('daily-strength');
  saveState();
+}
+function questForId(id){
+ const quest=QUESTS.find(q=>q.id===id);
+ if(id!=='daily-strength'||!quest)return quest;
+ const pushups=state.rpg.days[dateKey()]?.miniChallenge==='pushups';
+ return {...quest,name:pushups?'10 pompes':'20 squats',detail:'Mini-défi obligatoire du jour',reps:pushups?10:20,exercise:pushups?'pushups':'squats'};
 }
 function questMinutes(q,value=q.minutes){
  if(!q.flexible)return q.minutes;
@@ -419,12 +429,12 @@ function questCalorieDetails(q,minutes,override){
 function questBaseXp(q,minutes=q.minutes){return q.flexible?Math.min(120,Math.round(q.xp*questMinutes(q,minutes)/q.minutes)):q.xp}
 function questXp(q,calories,minutes=q.minutes){return questBaseXp(q,minutes)+Math.min(100,Math.floor(Math.max(0,calories??questCalories(q,minutes))/5))}
 function claimQuest(id,calories,show=true,duration,calorieSource){
- settleDays();const day=state.rpg.days[dateKey()],q=QUESTS.find(q=>q.id===id);
+ settleDays();const day=state.rpg.days[dateKey()],q=questForId(id);
  if(!q||q.permanent||day.claims[id])return 0;
  const minutes=questMinutes(q,duration??q.minutes);
- const details=questCalorieDetails(q,minutes,calories),beforeXp=state.rpg.xp,energy=details.calories;
+ const details=q.mandatory?{calories:0,source:'repetitions'}:questCalorieDetails(q,minutes,calories),beforeXp=state.rpg.xp,energy=details.calories;
  const source=calorieSource??details.source;
- let gain=questXp(q,energy,minutes);day.claims[id]={xp:gain,calories:energy,minutes,calorieSource:source};
+ let gain=questXp(q,energy,minutes);day.claims[id]={xp:gain,calories:energy,minutes,calorieSource:source,...(q.mandatory?{reps:q.reps,exercise:q.exercise}:{})};
  if(!day.selected.includes(id))day.selected.push(id);
  state.goals[dateKey()]=Object.keys(day.claims);
  let bonus=0;
@@ -433,13 +443,14 @@ function claimQuest(id,calories,show=true,duration,calorieSource){
  gain=state.rpg.xp-beforeXp;
  pendingXpReward={from:beforeXp,to:state.rpg.xp};
  state.rpg.ledger.push({day:dateKey(),xp:gain,label:q.name});
- if(show&&q.minutes)state.history.push({id:Date.now(),date:dateKey(),title:q.flexible?`${q.name}${q.id==='shadowboxing'&&source.startsWith('fitxr')?' VR · FitXR':''} · ${minutes} min`:q.detail,minutes,calories:energy,calorieSource:source});
+ if(show&&(q.minutes||q.mandatory))state.history.push({id:Date.now(),date:dateKey(),title:q.mandatory?q.name:q.flexible?`${q.name}${q.id==='shadowboxing'&&source.startsWith('fitxr')?' VR · FitXR':''} · ${minutes} min`:q.detail,minutes,calories:energy,calorieSource:source,...(q.mandatory?{reps:q.reps}: {})});
  saveState();render();
  if(show){
   navigateTo('today');
   document.querySelector('#questReward').textContent=`+${gain} XP`;
   document.querySelector('#questRewardTitle').textContent=q.name;
   document.querySelector('#questRewardDetail').textContent=`${q.flexible?minutes+' min · ':''}${questBaseXp(q,minutes)} XP de quête + ${questXp(q,energy,minutes)-questBaseXp(q,minutes)} XP d’énergie${bonus?' + 80 XP de journée réussie':''} · ≈ ${energy} kcal`;
+  if(q.mandatory)document.querySelector('#questRewardDetail').textContent=`${q.name} · ${q.xp} XP${bonus?' + 80 XP de journée réussie':''}. Les calories ne sont pas estimées sans durée mesurée.`;
   document.querySelector('#questLevelUp').textContent=gain?'Ton expérience rejoint ta barre de progression.':'Niveau maximum atteint.';
   document.querySelector('#questSuccess').showModal();
   animateXpReward('quest',beforeXp,state.rpg.xp);
@@ -456,6 +467,7 @@ function renderRpg(){
  document.querySelector('#dayReward').textContent=day.bonus?'✦ Bonus de journée obtenu : +80 XP':'✦ Termine tes quêtes choisies : +80 XP';
  document.querySelector('#goalScore').textContent=`${day.selected.filter(id=>day.claims[id]).length}/${day.selected.length}`;
  const questRow=(q)=>{
+  q=questForId(q.id);
   const done=!!day.claims[q.id];
   const sleep=q.id==='bedtime'?day.bedtime:null;
   const reward=done?'ACCOMPLI':q.id==='nutrition'?'À VALIDER':sleep?(sleep.late?'APRÈS MINUIT':'RENSEIGNÉ'):`+${questXp(q)} XP`;
@@ -465,12 +477,12 @@ function renderRpg(){
  document.querySelector('#goalList').innerHTML=QUESTS.filter(q=>q.permanent||day.selected.includes(q.id)).map(questRow).join('');
  document.querySelector('#activityCategories').innerHTML=QUESTS.map(questRow).join('');
  if(activeQuest)renderChallenge();
- document.querySelector('#questChoices').innerHTML=QUESTS.map(q=>`<label><input type="checkbox" data-select-quest="${q.id}" ${q.permanent||day.selected.includes(q.id)?'checked':''} ${q.permanent||day.selected.some(id=>day.claims[id])?'disabled':''}> ${q.detail}</label>`).join('');
+ document.querySelector('#questChoices').innerHTML=QUESTS.map(q=>questForId(q.id)).map(q=>`<label><input type="checkbox" data-select-quest="${q.id}" ${q.permanent||day.selected.includes(q.id)?'checked':''} ${q.permanent||q.mandatory||day.selected.some(id=>day.claims[id])?'disabled':''}> ${q.mandatory?q.name+' · obligatoire':q.detail}</label>`).join('');
  document.querySelector('#xpLedger').innerHTML=state.rpg.ledger.slice(-10).reverse().map(e=>`<div class="history-item"><span>${e.day} · ${escapeHtml(e.label)}</span><strong>${e.xp>0?'+':''}${e.xp} XP</strong></div>`).join('')||'<p>Ton aventure commence aujourd’hui.</p>';
 }
 document.querySelector('#questChoices').addEventListener('change',event=>{
  const id=event.target.dataset.selectQuest;if(!id)return;
- if(QUESTS.find(q=>q.id===id)?.permanent)return;
+ if(QUESTS.find(q=>q.id===id)?.permanent||QUESTS.find(q=>q.id===id)?.mandatory)return;
  settleDays();const day=state.rpg.days[dateKey()];if(day.selected.some(id=>day.claims[id]))return;
  const chosen=new Set(day.selected);event.target.checked?chosen.add(id):chosen.delete(id);
  if(!chosen.size){renderRpg();toast('Choisis au moins une quête.');return}
@@ -483,9 +495,10 @@ document.querySelector('#finishScreen').addEventListener('cancel',event=>{event.
 setInterval(()=>{if(!session&&!cindySession&&!kettlebellSession)render()},60000);
 
 function renderChallenge(){
- const q=QUESTS.find(q=>q.id===activeQuest);if(!q)return;
+ const q=questForId(activeQuest);if(!q)return;
  const done=!!state.rpg.days[dateKey()]?.claims[q.id];
  const details={
+  'daily-strength':{description:`Ton mini-défi obligatoire d’aujourd’hui : ${q.name}. Le tirage est enregistré pour la journée.`,instructions:q.exercise==='pushups'?['Réalise 10 pompes au total, en une ou plusieurs séries avec des pauses.','Choisis une variante adaptée : pompes sur les genoux ou mains sur un support stable si nécessaire.','Une fois les 10 répétitions terminées, valide le défi pour recevoir 25 XP et cocher la ligne.']:['Réalise 20 squats au total, en une ou plusieurs séries avec des pauses.','Reprends les consignes du squat : buste stable, genoux dans l’axe des pieds et amplitude confortable.','Une fois les 20 répétitions terminées, valide le défi pour recevoir 25 XP et cocher la ligne.']},
   workout:{description:'Entraîne ton corps au dojo. Une séance guidée, mouvement après mouvement, avec ses temps de récupération.',instructions:['Découvre le détail de la séance et les consignes des exercices.','Lance la séance guidée ou choisis le circuit CINDY.','Termine la séance pour recevoir ton XP et cocher ton défi.']},
   kettlebell:{description:'Renforce ta chaîne postérieure et ton centre avec un circuit kettlebell guidé.',instructions:['Choisis le circuit Initiation ou Essentiel selon ton aisance.','Prépare ta kettlebell et découvre les mouvements du circuit.','Enchaîne les tours proprement, puis termine la séance pour valider.']},
   walk:{description:'Pars explorer les alentours à pied. Accorde-toi au moins vingt minutes de marche active.',instructions:['Choisis un parcours qui te convient.','Marche pendant au moins 20 minutes à une allure adaptée à tes capacités.','De retour, valide ton exploration ci-dessous. Tes pas sont consultables dans leur écran dédié.']},
@@ -499,12 +512,12 @@ function renderChallenge(){
  document.querySelector('#challengeIcon').textContent=q.icon;
  document.querySelector('#challengeTitle').textContent=q.name;
  document.querySelector('#challengeDescription').textContent=details.description;
- document.querySelector('#challengeStatus').textContent=done?'DÉFI ACCOMPLI':'TA PROCHAINE MISSION';
+ document.querySelector('#challengeStatus').textContent=done?'DÉFI ACCOMPLI':q.mandatory?'DÉFI OBLIGATOIRE DU JOUR':'TA PROCHAINE MISSION';
  document.querySelector('#challengeMetrics').hidden=q.id==='nutrition';
- document.querySelector('#challengeTarget').textContent=q.id==='nutrition'?'Déclaration du jour':q.id==='bedtime'?sleepTarget().label:q.id==='water'?'Cible personnelle':q.id==='workout'?`${state.duration} min`:`${q.minutes} min`;
+ document.querySelector('#challengeTarget').textContent=q.mandatory?`${q.reps} répétitions`:q.id==='nutrition'?'Déclaration du jour':q.id==='bedtime'?sleepTarget().label:q.id==='water'?'Cible personnelle':q.id==='workout'?`${state.duration} min`:`${q.minutes} min`;
  const calories=q.id==='workout'?estimatedCalories():questCalories(q);
  document.querySelector('#challengeXp').textContent=q.id==='nutrition'?'Validation simple':`+${questXp(q,calories)} XP`;
- document.querySelector('#challengeCalories').textContent=q.id==='nutrition'?'—':`≈ ${calories} kcal`;
+ document.querySelector('#challengeCalories').textContent=q.id==='nutrition'?'—':q.mandatory?'Non estimées':`≈ ${calories} kcal`;
  document.querySelector('#challengeInstructions').innerHTML=details.instructions.map(text=>`<li>${text}</li>`).join('');
  document.querySelector('#workoutChallenge').hidden=q.id!=='workout'||done;
  document.querySelector('#kettlebellChallenge').hidden=q.id!=='kettlebell'||done;
@@ -514,7 +527,7 @@ function renderChallenge(){
  document.querySelector('#nutritionChallenge').hidden=q.id!=='nutrition';
  if(q.id==='bedtime')renderBedtime();
  if(q.id==='nutrition')renderNutrition();
- document.querySelector('#challengeActionDescription').textContent=q.id==='water'?'Atteins ton objectif d’hydratation sur la journée, puis confirme ici.':`Réalise cette activité pendant ${q.minutes} minutes, puis confirme sa réalisation.`;
+ document.querySelector('#challengeActionDescription').textContent=q.mandatory?`Effectue ${q.name.toLowerCase()}, puis confirme ici. Ce défi compte pour le bonus de journée et ne peut pas être retiré de ta liste.`:q.id==='water'?'Atteins ton objectif d’hydratation sur la journée, puis confirme ici.':`Réalise cette activité pendant ${q.minutes} minutes, puis confirme sa réalisation.`;
  document.querySelector('#completeChallenge').hidden=guided||done||!!q.permanent;
  document.querySelector('#completeChallenge').disabled=done;
  document.querySelector('#challengeDurationSection').hidden=!q.flexible;
