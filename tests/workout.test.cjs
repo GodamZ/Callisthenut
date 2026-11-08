@@ -495,3 +495,42 @@ test('site updates revalidate network responses and retain offline navigation fa
  handlers.fetch({request:{method:'GET',mode:'navigate'},respondWith(value){pending=value}});
  assert.equal(await pending,cached);
 });
+
+test('FitXR personal reference uses 456 kcal for 45 minutes and preserves the classic alternative',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.shadowBoxingMode="fitxr";state.weight=70');
+  assert.equal(run('questCalories(QUESTS.find(q=>q.id==="shadowboxing"),45)'),456);
+  assert.equal(run('questXp(QUESTS.find(q=>q.id==="shadowboxing"),456,45)'),211);
+  assert.equal(run('questCalories(QUESTS.find(q=>q.id==="shadowboxing"),90)'),912);
+  assert.equal(run('questXp(QUESTS.find(q=>q.id==="shadowboxing"),912,90)'),220);
+  run('state.shadowBoxingMode="classic"');
+  assert.equal(run('questCalories(QUESTS.find(q=>q.id==="shadowboxing"),45)'),276);
+ }finally{run(`delete state.shadowBoxingMode;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+test('FitXR declared calories replace the reference and persist one complete session without duplicate squat calories',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:0,days:{},ledger:[]};state.history=[];state.shadowBoxingMode="fitxr";settleDays();openChallenge("shadowboxing")');
+  element('#challengeDuration').value='45';element('#challengeDuration').listeners.input();
+  assert.equal(element('#challengeCalories').textContent,'≈ 456 kcal');assert.equal(element('#challengeXp').textContent,'+211 XP');
+  element('#shadowCalories').value='400';element('#shadowCalories').listeners.input();
+  assert.equal(element('#challengeCalories').textContent,'≈ 400 kcal');assert.equal(element('#challengeXp').textContent,'+200 XP');
+  element('#challengeDuration').value='60';element('#challengeDuration').listeners.input();assert.equal(element('#challengeCalories').textContent,'≈ 400 kcal');
+  element('#challengeDuration').value='45';element('#shadowCalories').value='456';element('#shadowCalories').listeners.input();
+  element('#completeChallenge').listeners.click();
+  assert.equal(run('state.rpg.xp'),211);assert.equal(run('state.history.length'),1);
+  assert.equal(run('state.history[0].calories'),456);assert.equal(run('state.history[0].calorieSource'),'fitxr-declared');
+  assert.equal(run('activityEnergyToday()'),456);assert.equal(run('loadState().rpg.days[dateKey()].claims.shadowboxing.calories'),456);
+  run('state.weight=99;openChallenge("shadowboxing")');assert.equal(element('#challengeCalories').textContent,'≈ 456 kcal');
+ }finally{run(`activeQuest=null;delete state.shadowBoxingMode;delete questCalorieDrafts[dateKey()+":shadowboxing"];Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+test('invalid declared activity calories are rejected before XP or history are modified',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:0,days:{},ledger:[]};state.history=[];settleDays()');
+  for(const value of ['NaN',-1,1.5,10001])assert.throws(()=>run(`claimQuest("shadowboxing",${JSON.stringify(value)},true,45)`));
+  assert.equal(run('state.rpg.xp'),0);assert.equal(run('state.history.length'),0);
+  assert.equal(run('questCalorieDetails(QUESTS.find(q=>q.id==="shadowboxing"),45,"0").calories'),0);
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});

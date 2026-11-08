@@ -57,6 +57,7 @@ const QUESTS=[
 ];
 let activeQuest=null;
 const questDurationDrafts={};
+const questCalorieDrafts={};
 let xpAnimation=null,pendingXpReward=null;
 const state=loadState();
 initRpg();
@@ -255,7 +256,11 @@ document.querySelector('#completeChallenge').addEventListener('click',()=>{
  const q=QUESTS.find(q=>q.id===activeQuest);if(!q)return;
  // Guided activities are completed by the existing workout players.
  if(['workout','kettlebell'].includes(q.id))return;
- try{claimQuest(q.id,undefined,true,q.flexible?document.querySelector('#challengeDuration').value:q.minutes)}catch(error){document.querySelector('#challengeDurationError').textContent=error.message}
+ try{
+  const minutes=q.flexible?document.querySelector('#challengeDuration').value:q.minutes;
+  const energy=q.id==='shadowboxing'?questCalorieDetails(q,minutes,document.querySelector('#shadowCalories').value):null;
+  claimQuest(q.id,energy?.source.includes('declared')?energy.calories:undefined,true,minutes,energy?.source);
+ }catch(error){document.querySelector('#challengeDurationError').textContent=error.message}
 });
 
 document.querySelector('#startWorkout').addEventListener('click',startWorkout);
@@ -396,15 +401,30 @@ function questMinutes(q,value=q.minutes){
  if(!Number.isFinite(minutes)||minutes<q.minutes||minutes>1440)throw Error(`La durée doit être comprise entre ${q.minutes} et 1 440 minutes.`);
  return Math.round(minutes*10)/10;
 }
-function questCalories(q,minutes=q.minutes){return Math.round(q.met*3.5*state.weight/200*questMinutes(q,minutes))}
+function questCalories(q,minutes=q.minutes){
+ minutes=questMinutes(q,minutes);
+ // Personal FitXR reference supplied by the user; squats are already included.
+ if(q.id==='shadowboxing'&&(state.shadowBoxingMode??'fitxr')==='fitxr')return Math.round(456*minutes/45);
+ return Math.round(q.met*3.5*state.weight/200*minutes);
+}
+function questCalorieDetails(q,minutes,override){
+ minutes=questMinutes(q,minutes);
+ if(override!==undefined&&String(override).trim()!==''){
+  const calories=Number(override);
+  if(!Number.isSafeInteger(calories)||calories<0||calories>10000)throw Error('Les calories déclarées doivent être un entier entre 0 et 10 000 kcal.');
+  return {calories,source:q.id==='shadowboxing'&&(state.shadowBoxingMode??'fitxr')==='fitxr'?'fitxr-declared':'declared'};
+ }
+ return {calories:questCalories(q,minutes),source:q.id==='shadowboxing'&&(state.shadowBoxingMode??'fitxr')==='fitxr'?'fitxr-reference':'met-estimate'};
+}
 function questBaseXp(q,minutes=q.minutes){return q.flexible?Math.min(120,Math.round(q.xp*questMinutes(q,minutes)/q.minutes)):q.xp}
 function questXp(q,calories,minutes=q.minutes){return questBaseXp(q,minutes)+Math.min(100,Math.floor(Math.max(0,calories??questCalories(q,minutes))/5))}
-function claimQuest(id,calories,show=true,duration){
+function claimQuest(id,calories,show=true,duration,calorieSource){
  settleDays();const day=state.rpg.days[dateKey()],q=QUESTS.find(q=>q.id===id);
  if(!q||q.permanent||day.claims[id])return 0;
  const minutes=questMinutes(q,duration??q.minutes);
- const beforeXp=state.rpg.xp,energy=calories===undefined?questCalories(q,minutes):calories;
- let gain=questXp(q,energy,minutes);day.claims[id]={xp:gain,calories:energy,minutes};
+ const details=questCalorieDetails(q,minutes,calories),beforeXp=state.rpg.xp,energy=details.calories;
+ const source=calorieSource??details.source;
+ let gain=questXp(q,energy,minutes);day.claims[id]={xp:gain,calories:energy,minutes,calorieSource:source};
  if(!day.selected.includes(id))day.selected.push(id);
  state.goals[dateKey()]=Object.keys(day.claims);
  let bonus=0;
@@ -413,7 +433,7 @@ function claimQuest(id,calories,show=true,duration){
  gain=state.rpg.xp-beforeXp;
  pendingXpReward={from:beforeXp,to:state.rpg.xp};
  state.rpg.ledger.push({day:dateKey(),xp:gain,label:q.name});
- if(show&&q.minutes)state.history.push({id:Date.now(),date:dateKey(),title:q.flexible?`${q.name} · ${minutes} min`:q.detail,minutes,calories:energy});
+ if(show&&q.minutes)state.history.push({id:Date.now(),date:dateKey(),title:q.flexible?`${q.name}${q.id==='shadowboxing'&&source.startsWith('fitxr')?' VR · FitXR':''} · ${minutes} min`:q.detail,minutes,calories:energy,calorieSource:source});
  saveState();render();
  if(show){
   navigateTo('today');
@@ -471,7 +491,7 @@ function renderChallenge(){
   walk:{description:'Pars explorer les alentours à pied. Accorde-toi au moins vingt minutes de marche active.',instructions:['Choisis un parcours qui te convient.','Marche pendant au moins 20 minutes à une allure adaptée à tes capacités.','De retour, valide ton exploration ci-dessous. Tes pas sont consultables dans leur écran dédié.']},
   run:{description:'Une sortie d’au moins quinze minutes pour prendre l’air et faire avancer ton aventure.',instructions:['Prépare ton parcours et démarre progressivement.','Cours pendant au moins 15 minutes à une allure confortable, en alternant avec la marche si besoin.','Une fois ta sortie terminée, reviens la valider ici.']},
   bike:{description:'Traverse la vallée à vélo avec une sortie d’au moins trente minutes.',instructions:['Prépare ton vélo et choisis un itinéraire adapté.','Roule pendant au moins 30 minutes selon tes capacités.','À la fin de ta sortie, valide ton défi pour recevoir ton XP.']},
-  shadowboxing:{description:'Au moins quinze minutes de boxe dans le vide, sans partenaire ni matériel. Travaille tes déplacements, ta garde et tes enchaînements à ton rythme.',instructions:['Libère de l’espace autour de toi et commence par 2 minutes de mobilisation douce.','Effectue 3 rounds de 3 minutes : déplacements, directs et esquives, sans contact. Garde des mouvements contrôlés et adapte ton rythme.','Prends 1 minute de récupération entre les rounds, puis termine par 2 minutes de retour au calme : 15 minutes au total.','Pour prolonger la séance, ajoute des rounds et renseigne ta durée totale réelle avant de valider. Les calories restent une estimation pour une intensité modérée, repos inclus.']},
+  shadowboxing:{description:'Une séance de boxe classique ou de boxe en réalité virtuelle avec FitXR, pendant au moins 15 minutes. Le mode FitXR tient compte de ta référence personnelle : 456 kcal sur 45 minutes, avec les squats déjà inclus.',instructions:['Choisis le mode FitXR pour tes séances VR ou le mode classique pour de la boxe dans le vide.','Suis ta séance et renseigne sa durée réelle, échauffement et récupération inclus.','Si FitXR affiche un total calorique, saisis-le : il remplace l’estimation pour cette séance. Les squats de la séance ne sont pas ajoutés une seconde fois.','Sans valeur déclarée, le mode FitXR utilise 456 kcal pour 45 minutes, ajustées à la durée. Cette référence personnelle et les chiffres de FitXR restent des estimations ; la durée seule ne reflète pas toutes les variations d’intensité.']},
   bedtime:{description:'Prépare une nuit reposante avec des heures de coucher et de réveil régulières. Ce défi reste disponible chaque jour.',instructions:['L’OMS conseille des horaires réguliers, sans fixer une heure universelle de coucher pour les adultes.','Repère adulte complémentaire : les NIH indiquent généralement 7 à 9 heures de sommeil. Le conseil ci-dessous réserve une durée choisie avant ton réveil ; ce n’est pas une mesure du sommeil réel.','Renseigne ton coucher réel pour le soir concerné, y compris le lendemain matin. Une seule déclaration est possible par nuit.','Le jeu accorde 40 XP si tu respectes l’heure conseillée, sans calories. Un coucher plus tardif mais au plus tard à minuit ne retire aucun XP. Seul un coucher déclaré après minuit retire 10 XP. Sans déclaration : aucune pénalité.']},
   nutrition:{description:'Valide simplement ce défi si tu considères avoir mangé sans excès aujourd’hui.',instructions:['Si ta journée est sans excès, utilise le bouton de validation : la ligne sera cochée sur l’accueil.','Si tu as fait des excès, laisse le défi non validé. Tu peux aussi retirer une validation si ta journée change.','Ce défi ne demande aucun comptage de calories et ne retire aucun XP.']},
   water:{description:'Prends soin de ton hydratation tout au long de la journée, selon tes besoins et ton objectif personnel.',instructions:['Définis une cible d’hydratation adaptée à tes besoins.','Répartis tes boissons au fil de la journée.','Valide seulement lorsque ton objectif personnel est atteint.']}
@@ -498,6 +518,14 @@ function renderChallenge(){
  document.querySelector('#completeChallenge').hidden=guided||done||!!q.permanent;
  document.querySelector('#completeChallenge').disabled=done;
  document.querySelector('#challengeDurationSection').hidden=!q.flexible;
+ document.querySelector('#shadowBoxingOptions').hidden=q.id!=='shadowboxing';
+ if(q.id==='shadowboxing'){
+  const record=state.rpg.days[dateKey()].claims[q.id];
+  document.querySelector('#shadowMode').value=record?.calorieSource?.startsWith('fitxr')?'fitxr':record?'classic':state.shadowBoxingMode??'fitxr';
+  document.querySelector('#shadowMode').disabled=done;
+  document.querySelector('#shadowCalories').disabled=done;
+  document.querySelector('#shadowCalories').value=done?(record.calorieSource?.includes('declared')?record.calories:''):(questCalorieDrafts[`${dateKey()}:${q.id}`]??'');
+ }
  if(q.flexible){
   const input=document.querySelector('#challengeDuration');
   input.min=q.minutes;input.disabled=done;
@@ -515,7 +543,12 @@ function updateChallengeDuration(){
  if(!done)questDurationDrafts[`${dateKey()}:${q.id}`]=value;
  try{
   const minutes=questMinutes(q,value),record=state.rpg.days[dateKey()]?.claims[q.id];
-  const calories=record?.calories??questCalories(q,minutes);
+  const energy=q.id==='shadowboxing'?questCalorieDetails(q,minutes,document.querySelector('#shadowCalories').value):questCalorieDetails(q,minutes);
+  const calories=record?.calories??energy.calories;
+  if(q.id==='shadowboxing'){
+   const source=record?.calorieSource??energy.source;
+   document.querySelector('#shadowCaloriesSource').textContent=source==='fitxr-declared'?'Valeur déclarée depuis FitXR (estimation de l’application VR).':source==='declared'?'Valeur calorique déclarée pour cette séance.':source==='fitxr-reference'?'Estimation personnelle FitXR : 456 kcal / 45 min, squats inclus.':'Estimation générique de boxe classique, selon ton poids et ta durée.';
+  }
   document.querySelector('#challengeTarget').textContent=`${minutes} min`;
   document.querySelector('#challengeCalories').textContent=`≈ ${calories} kcal`;
   document.querySelector('#challengeXp').textContent=`+${record?.xp??questXp(q,calories,minutes)} XP`;
@@ -530,6 +563,17 @@ function updateChallengeDuration(){
  }
 }
 document.querySelector('#challengeDuration').addEventListener('input',updateChallengeDuration);
+document.querySelector('#shadowMode').addEventListener('change',()=>{
+ if(activeQuest!=='shadowboxing'||state.rpg.days[dateKey()]?.claims.shadowboxing)return;
+ const mode=document.querySelector('#shadowMode').value;
+ if(!['classic','fitxr'].includes(mode))return;
+ state.shadowBoxingMode=mode;saveState();updateChallengeDuration();
+});
+document.querySelector('#shadowCalories').addEventListener('input',()=>{
+ if(activeQuest!=='shadowboxing'||state.rpg.days[dateKey()]?.claims.shadowboxing)return;
+ questCalorieDrafts[`${dateKey()}:shadowboxing`]=document.querySelector('#shadowCalories').value;
+ updateChallengeDuration();
+});
 
 function sleepTarget(){
  const settings=state.sleepSettings||{wake:'07:00',hours:8};
