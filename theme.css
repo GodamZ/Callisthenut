@@ -33,7 +33,10 @@ progress::-moz-progress-bar{background:#f1cb69}
 .primary-button:hover:not(:disabled){filter:brightness(1.08)}
 .primary-button:disabled{opacity:.55}
 .play{color:#ffe3a5;background:#211a0e}
-.bottom-nav{background:#141310f5;border-color:#665335}
+:root{--app-safe-bottom:max(env(safe-area-inset-bottom,0px),var(--legacy-android-inset,0px));--nav-lift:10px}
+.bottom-nav{background:#141310f5;border-color:#665335;bottom:calc(var(--app-safe-bottom) + var(--nav-lift));height:82px;padding-bottom:8px;border:1px solid #665335;border-radius:18px 18px 0 0}
+.app-shell{padding-bottom:calc(110px + var(--app-safe-bottom) + var(--nav-lift))}
+.toast{bottom:calc(110px + var(--app-safe-bottom) + var(--nav-lift))}
 .nav-item{color:#c4bba7;font-size:11px;gap:5px}
 .nav-item.active{color:#f7d780}.nav-item.active:after{background:#f7d780}
 .section-heading h2{color:#fff5de;font-size:27px}

@@ -9,7 +9,7 @@ val webAssets = tasks.register<Sync>("prepareWebAssets") {
 android {
     namespace = "fr.callisthenut.app"
     compileSdk = 36
-    defaultConfig { applicationId = "fr.callisthenut.app"; minSdk = 28; targetSdk = 35; versionCode = 24; versionName = "2.4" }
+    defaultConfig { applicationId = "fr.callisthenut.app"; minSdk = 28; targetSdk = 35; versionCode = 25; versionName = "2.5" }
     sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/webAssets"))
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }

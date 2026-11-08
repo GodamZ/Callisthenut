@@ -1,10 +1,10 @@
-﻿# Android et Health Connect
+# Android et Health Connect
 
-L’APK 2.4 charge désormais le site `https://godamz.github.io/Callisthenut/`. Il ne contient plus de copie figée de l’application web. Les mises à jour du site arrivent après leur publication sur GitHub Pages, sans recompilation de l’APK. Les modifications natives Android nécessitent toujours un nouvel APK.
+L’APK 2.5 charge désormais le site `https://godamz.github.io/Callisthenut/`. Il ne contient plus de copie figée de l’application web. Les mises à jour du site arrivent après leur publication sur GitHub Pages, sans recompilation de l’APK. Les modifications natives Android nécessitent toujours un nouvel APK.
 
 ## Installer la mise à jour
 
-Fichier produit : `../artifacts/Callisthenut-2.4-debug.apk` (environ 11 Mo). Installer par-dessus la version 2.3, sans la désinstaller : le certificat de signature est identique et le numéro de version augmente. Le paquet reste signé avec la clé de développement locale, sans publication Google Play.
+Fichier produit : `../artifacts/Callisthenut-2.5-debug.apk` (environ 11 Mo). Installer par-dessus la version 2.3 ou 2.4, sans la désinstaller : le certificat de signature est identique et le numéro de version augmente. Le paquet reste signé avec la clé de développement locale, sans publication Google Play.
 
 Au premier lancement, la progression de l’ancien stockage local de l’APK est copiée vers le stockage de l’origine GitHub Pages, avant le démarrage du site. Une progression déjà présente à cette origine est conservée ; aucun mélange ni écrasement. Les données locales d’origine ne sont pas effacées. Le raccourci Brave utilise son propre stockage et n’est pas importé.
 
@@ -23,3 +23,5 @@ La page de confidentialité reste embarquée pour les intentions Android de just
 Depuis ce dossier sous Windows : `./build-apk.ps1`. Le script compile, copie l’APK versionné dans `../artifacts/` et écrit son empreinte SHA-256. Il utilise le JDK d’Android Studio et le SDK local si les variables correspondantes ne sont pas définies. Prérequis : JDK 17 ou ultérieur compatible, SDK Android 36, Gradle 8.11.1 via le wrapper, AGP 8.10.0. Cible Android 35, minimum Android 9/API 28.
 
 Contrôles : `./gradlew.bat :app:assembleDebug :app:testDebugUnitTest :app:lintDebug`. La compilation, les tests de restriction d’URL, lint et la signature sont vérifiés. Le paquet contient seulement la migration et la confidentialité locales. Les essais réels de transfert de données, de chargement sur téléphone et de lecture des pas restent à effectuer sur appareil compatible. Pour Google Play, déclarer l’usage de Health Connect et fournir une URL publique de politique de confidentialité.
+
+L’APK 2.5 applique les insets système au parent du WebView, y compris la barre de navigation en mode gestes ou trois boutons et les encoches. La fenêtre web est ainsi réellement redimensionnée au lieu de simplement ajouter du padding dans le WebView. Les modifications du libellé « Défis » et de la marge web de 10 px sont à publier avec le site.

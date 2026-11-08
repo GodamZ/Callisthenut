@@ -10,7 +10,11 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
+import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
@@ -60,12 +64,18 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val container = FrameLayout(this)
         web = WebView(this)
-        setContentView(web)
-        web.setOnApplyWindowInsetsListener { view, insets ->
-            view.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
-            insets
+        container.addView(web, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        setContentView(container)
+        // Pad the parent, so fixed CSS elements see the smaller, safe viewport.
+        ViewCompat.setOnApplyWindowInsetsListener(container) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            WindowInsetsCompat.CONSUMED
         }
+        ViewCompat.requestApplyInsets(container)
         web.settings.javaScriptEnabled = true
         web.settings.domStorageEnabled = true
         web.settings.allowFileAccess = false
@@ -102,7 +112,7 @@ class MainActivity : ComponentActivity() {
                 if (!SitePolicy.permitsHealth(url)) return
                 if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
                     // Wait until the JS receiver exists, including when index.html has a #route.
-                    view.evaluateJavascript("(function(){if(typeof window.receiveHealthSteps!=='function'||typeof renderHealth!=='function')return false;window.AndroidHealth={syncSteps:()=>HealthBridge.postMessage('sync'),disconnect:()=>HealthBridge.postMessage('disconnect')};renderHealth();return true})()") { ready ->
+                    view.evaluateJavascript("(function(){if(typeof window.receiveHealthSteps!=='function'||typeof renderHealth!=='function')return false;window.AndroidHealth={systemInsetsHandled:true,syncSteps:()=>HealthBridge.postMessage('sync'),disconnect:()=>HealthBridge.postMessage('disconnect')};renderHealth();return true})()") { ready ->
                         if (!SitePolicy.permitsHealth(web.url.orEmpty())) return@evaluateJavascript
                         if (ready == "true") {
                             pageReady = true

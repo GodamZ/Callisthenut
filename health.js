@@ -63,6 +63,8 @@ function rewardSteps(){
  saveState();render();renderHealth();showActivityReward('Les pas de l’aventure',gain,'10 XP par tranche de 1 000 pas, jusqu’à 60 XP par jour. Les pas ne rajoutent pas de calories à celles des activités.');return gain;
 }
 function renderHealth(){
+ // Older APKs don't resize the web viewport around Android's navigation bar.
+ document.documentElement?.style?.setProperty('--legacy-android-inset',hasHealthBridge()&&!window.AndroidHealth.systemInsetsHandled?'48px':'0px');
  const health=healthState(),entry=health.steps[dateKey()],total=stepTotal(entry);
  document.querySelector('#stepCount').textContent=total.toLocaleString('fr-FR');
  document.querySelector('#stepTargetLabel').textContent=`/ ${health.goal.toLocaleString('fr-FR')} pas`;
