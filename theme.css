@@ -94,3 +94,10 @@ button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,s
 @keyframes levelGold{0%{filter:brightness(1)}45%{filter:brightness(1.7);text-shadow:0 0 18px #f5d47a}100%{filter:brightness(1)}}
 @media(prefers-reduced-motion:reduce){.reward-experience *{animation:none!important;transition:none!important}.xp-shine{display:none!important}}
 #nutritionChallenge button{margin-top:16px}#nutritionResult{color:#ffe2a1;margin-top:20px}
+
+/* Keep validation above app navigation and Android's reserved bottom space. */
+#challengeView{padding-bottom:120px}
+#challengeView.active{animation:none}
+#challengeView .floating-challenge-action{position:fixed;z-index:26;left:50%;transform:translateX(-50%);bottom:calc(var(--app-safe-bottom) + var(--nav-lift) + 94px);width:min(calc(100% - 40px),692px);min-height:58px;height:auto;margin:0;padding:15px 18px;justify-content:center;line-height:1.4;text-align:center;box-shadow:0 3px 0 #806123,0 0 0 8px #111111ed,0 12px 35px #0009}
+html{scroll-padding-bottom:calc(190px + var(--app-safe-bottom) + var(--nav-lift))}
+@media(max-width:420px){#challengeView .floating-challenge-action{width:calc(100% - 32px);font-size:14px}}
