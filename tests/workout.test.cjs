@@ -363,50 +363,135 @@ test('on-time bedtime awards forty XP once, with no impact on the ordinary daily
  }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));delete state.sleepSettings;saveState();render()`)}
 });
 
-test('nutrition is a permanent declaration screen with no direct XP reward or generic completion',()=>{
+test('free challenge duration increases calories and XP, keeping minimum and maximum checks',()=>{
+ for(const id of ['walk','run','bike','shadowboxing']){
+  const q=run(`QUESTS.find(q=>q.id==="${id}")`);
+  const single=run(`questCalories(QUESTS.find(q=>q.id==="${id}"))`);
+  const doubled=run(`questCalories(QUESTS.find(q=>q.id==="${id}"),${q.minutes*2})`);
+  assert.ok(Math.abs(doubled-2*single)<=1,id);
+  const xp=run(`questXp(QUESTS.find(q=>q.id==="${id}"))`);
+  assert.ok(run(`questXp(QUESTS.find(q=>q.id==="${id}"),undefined,${q.minutes*2})`)>xp,id);
+  assert.throws(()=>run(`questMinutes(QUESTS.find(q=>q.id==="${id}"),${q.minutes-1})`));
+  assert.throws(()=>run(`questMinutes(QUESTS.find(q=>q.id==="${id}"),1441)`));
+  assert.ok(run(`questXp(QUESTS.find(q=>q.id==="${id}"),undefined,1440)` )<=220);
+ }
+ assert.equal(run('questMinutes(QUESTS.find(q=>q.id==="walk"),20.5)'),20.5);
+ assert.throws(()=>run('questMinutes(QUESTS.find(q=>q.id==="walk"),NaN)'));
+});
+test('duration preview recalculates before validation and blocks shorter-than-minimum input',()=>{
  const saved=run('JSON.stringify(state)');
  try{
-  run('openChallenge("nutrition")');
-  assert.ok(element('#goalList').innerHTML.includes('data-open-quest="nutrition"'));
-  assert.equal(element('#nutritionChallenge').hidden,false);assert.equal(element('#completeChallenge').hidden,true);
-  assert.equal(run('claimQuest("nutrition")'),0);assert.equal(run('questXp(QUESTS.find(q=>q.id==="nutrition"))'),0);
-  for(const value of ['',null,-1,1.2,10001,'NaN'])assert.throws(()=>run(`nutritionCalories(${JSON.stringify(value)})`));
+  run('state.rpg={xp:0,days:{},ledger:[]};settleDays();openChallenge("shadowboxing")');
+  assert.equal(element('#challengeDurationSection').hidden,false);
+  element('#challengeDuration').value='30';element('#challengeDuration').listeners.input();
+  assert.equal(element('#challengeTarget').textContent,'30 min');
+  assert.equal(element('#challengeXp').textContent,run('"+"+questXp(QUESTS.find(q=>q.id==="shadowboxing"),undefined,30)+" XP"'));
+  element('#challengeDuration').value='14';element('#challengeDuration').listeners.input();
+  assert.equal(element('#completeChallenge').disabled,true);
+  element('#completeChallenge').listeners.click();assert.equal(run('state.rpg.xp'),0);
+  assert.equal(run('state.rpg.days[dateKey()].claims.shadowboxing'),undefined);
  }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
 });
-test('nutrition penalty is fixed and idempotent, independent of the reported amount or activity energy',()=>{
+test('free challenge claim saves its duration and reward once, including activity counters and reload',()=>{
  const saved=run('JSON.stringify(state)');
  try{
-  run('state.rpg={xp:100,days:{},ledger:[]};state.history=[{date:dateKey(),minutes:60,calories:1500,title:"Activity"}];settleDays()');
-  assert.equal(run('recordNutrition(250)'),-10);assert.equal(run('state.rpg.xp'),90);
-  assert.equal(run('recordNutrition(250)'),0);assert.equal(run('recordNutrition(900)'),0);
-  assert.equal(run('activityEnergyToday()'),1500);assert.equal(run('state.rpg.days[dateKey()].nutrition.excessCalories'),900);
-  assert.equal(run('state.rpg.xp'),90);assert.equal(run('loadState().rpg.days[dateKey()].nutrition.deducted'),10);
+  run('state.rpg={xp:0,days:{},ledger:[]};state.history=[];settleDays();openChallenge("walk")');
+  element('#challengeDuration').value='40';element('#challengeDuration').listeners.input();element('#completeChallenge').listeners.click();
+  assert.equal(run('state.rpg.days[dateKey()].claims.walk.minutes'),40);
+  assert.equal(run('state.history[0].minutes'),40);
+  assert.equal(run('activityEnergyToday()'),run('questCalories(QUESTS.find(q=>q.id==="walk"),40)'));
+  assert.equal(run('state.rpg.xp'),run('questXp(QUESTS.find(q=>q.id==="walk"),undefined,40)'));
+  assert.equal(run('loadState().rpg.days[dateKey()].claims.walk.minutes'),40);
+  assert.ok(element('#goalList').innerHTML.includes('40 min réalisées'));
+  const xp=run('state.rpg.xp');assert.equal(run('claimQuest("walk",undefined,true,80)'),0);assert.equal(run('state.rpg.xp'),xp);
+  run('openChallenge("walk")');assert.equal(element('#challengeDuration').disabled,true);assert.equal(element('#challengeDuration').value,40);
  }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
 });
-test('nutrition corrections restore only the XP deducted and cannot generate rewards',()=>{
+test('duration editor stays hidden for guided and non-sport challenges',()=>{
+ for(const id of ['workout','kettlebell','water','bedtime','nutrition']){
+  run(`openChallenge("${id}")`);assert.equal(element('#challengeDurationSection').hidden,true,id);
+ }
+ run('activeQuest=null');
+});
+
+test('nutrition can be validated and cleared directly, persists its checkmark, and never changes XP',()=>{
  const saved=run('JSON.stringify(state)');
  try{
-  run('state.rpg={xp:5,days:{},ledger:[]};settleDays()');
-  assert.equal(run('recordNutrition(100)'),-5);assert.equal(run('state.rpg.xp'),0);
-  assert.equal(run('recordNutrition(0)'),5);assert.equal(run('recordNutrition(0)'),0);
-  assert.equal(run('state.rpg.xp'),5);assert.equal(run('state.rpg.days[dateKey()].claims.nutrition.xp'),0);
-  assert.equal(run('recordNutrition(500)'),-5);assert.equal(run('recordNutrition(0)'),5);
-  assert.equal(run('state.rpg.xp'),5);
+  run('state.rpg={xp:100,days:{},ledger:[]};settleDays();openChallenge("nutrition")');
+  assert.equal(element('#challengeMetrics').hidden,true);assert.equal(element('#validateNutrition').disabled,false);
+  element('#validateNutrition').listeners.click();
+  assert.equal(run('state.rpg.xp'),100);assert.equal(run('loadState().rpg.days[dateKey()].nutrition.completed'),true);
+  assert.ok(element('#goalList').innerHTML.includes('Bien manger : terminé'));
+  run('openChallenge("nutrition")');assert.equal(element('#validateNutrition').disabled,true);
+  element('#clearNutrition').listeners.click();
+  assert.equal(run('state.rpg.xp'),100);assert.equal(run('loadState().rpg.days[dateKey()].nutrition.completed'),false);
+  assert.ok(!element('#goalList').innerHTML.includes('Bien manger : terminé'));
+  assert.equal(run('state.rpg.ledger.length'),0);
  }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
 });
-test('no nutrition declaration incurs no automatic penalty or daily bonus requirement',()=>{
- const saved=run('JSON.stringify(state)');
- try{
-  run('state.rpg={xp:100,days:{"2020-01-01":{selected:["nutrition"],claims:{},settled:false}},ledger:[]};settleDays()');
-  assert.equal(run('state.rpg.xp'),100);
-  run('claimQuest("walk",100,false);claimQuest("water",0,false)');assert.equal(run('state.rpg.days[dateKey()].bonus'),true);
-  assert.equal(run('state.rpg.xp'),285);
- }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+test('nutrition screen has direct buttons and no calorie entry or counter',()=>{
+ const html=fs.readFileSync('index.html','utf8');const screen=html.slice(html.indexOf('<section id="nutritionChallenge"'),html.indexOf('<button class="primary-button" id="completeChallenge">'));
+ assert.ok(screen.includes('id="validateNutrition"'));assert.ok(screen.includes('id="clearNutrition"'));
+ assert.ok(!screen.includes('<input'));assert.ok(!screen.includes('kcal'));assert.ok(!screen.includes('compteur'));
 });
-test('nutrition calorie counters exclude previous days and preserve explicitly zero activity energy',()=>{
+
+test('web installations explain Health Connect unavailability without pretending to connect',()=>{
+ run('delete window.AndroidHealth;renderHealth();syncHealth()');
+ assert.ok(element('#healthConnection').textContent.includes('raccourci'));
+ assert.ok(element('#healthStatus').textContent.includes('version web'));
+ assert.equal(element('#disconnectHealth').hidden,true);
+ assert.equal(run('healthSyncPending'),false);
+});
+test('empty Health Connect aggregate preserves an existing manual step total',()=>{
  const saved=run('JSON.stringify(state)');
  try{
-  run('state.history=[{date:dateKey(),minutes:10,calories:0},{date:dateKey(),minutes:10,calories:100},{date:"2020-01-01",minutes:10,calories:900}];renderNutrition()');
-  assert.equal(run('activityEnergyToday()'),100);assert.equal(element('#nutritionActivityCount').textContent,'100');
- }finally{run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+  run('state.health={steps:{},goal:6000};updateSteps(dateKey(),4500,"manual");window.AndroidHealth={syncSteps(){}};window.receiveHealthSteps({date:dateKey(),steps:0,hasData:false,enabled:true})');
+  assert.equal(run('stepTotal(state.health.steps[dateKey()])'),4500);
+  assert.equal(run('state.health.steps[dateKey()].source'),'manual');
+  assert.ok(element('#healthStatus').textContent.includes('ne contient pas encore'));
+  run('window.receiveHealthSteps({date:dateKey(),steps:0,hasData:true,enabled:true})');
+  assert.equal(run('stepTotal(state.health.steps[dateKey()])'),0);
+ }finally{run('finishHealthRequest();delete window.AndroidHealth;delete window.healthConnectionState');run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+test('Health Connect requests wait for one response, recover from errors and expose disconnection',()=>{
+ const originalTimeout=context.setTimeout,originalClear=context.clearTimeout;const timers=new Map();let next=1,calls=0;
+ context.setTimeout=cb=>{const id=next++;timers.set(id,cb);return id};context.clearTimeout=id=>timers.delete(id);
+ context.window.AndroidHealth={syncSteps(){calls++}};
+ try{
+  run('syncHealth();syncHealth()');assert.equal(calls,1);assert.equal(run('healthSyncPending'),true);
+  assert.equal(element('#syncHealth').disabled,true);
+  run('window.receiveHealthSteps({error:"Autorisation refusée",enabled:false})');
+  assert.equal(run('healthSyncPending'),false);assert.equal(element('#syncHealth').disabled,false);assert.equal(timers.size,0);
+  assert.equal(element('#healthStatus').textContent,'Autorisation refusée');
+  run('window.receiveHealthSteps({status:"disconnected",enabled:false})');assert.ok(element('#healthConnection').textContent.includes('désactivée'));
+  run('syncHealth()');const [id,cb]=timers.entries().next().value;timers.delete(id);cb();
+  assert.equal(run('healthSyncPending'),false);assert.ok(element('#healthStatus').textContent.includes('Aucune réponse'));
+ }finally{
+  run('finishHealthRequest();delete window.AndroidHealth;delete window.healthConnectionState');context.setTimeout=originalTimeout;context.clearTimeout=originalClear;run('renderHealth()');
+ }
+});
+test('Android bridge exceptions release the sync button for retry',()=>{
+ context.window.AndroidHealth={syncSteps(){throw Error('Bridge failed')}};
+ try{run('syncHealth()');assert.equal(run('healthSyncPending'),false);assert.equal(element('#syncHealth').disabled,false);assert.ok(element('#healthStatus').textContent.includes('a échoué'))}
+ finally{run('finishHealthRequest();delete window.AndroidHealth;renderHealth()')}
+});
+
+test('site updates revalidate network responses and retain offline navigation fallback',async()=>{
+ const handlers={},cacheWrites=[];let offline=false,revalidation;
+ const response={ok:true,clone(){return this}};
+ const cached={cached:true};
+ const sw=vm.createContext({
+  self:{addEventListener(type,handler){handlers[type]=handler}},
+  fetch:async(request,options)=>{revalidation=options.cache;if(offline)throw Error('offline');return response},
+  caches:{open:async()=>({put:async(request,value)=>cacheWrites.push(value)}),match:async key=>key==='./'?cached:undefined},
+  Response:{error:()=>({error:true})}
+ });
+ vm.runInContext(fs.readFileSync('sw.js','utf8'),sw);
+ let pending;
+ handlers.fetch({request:{method:'GET',mode:'navigate'},respondWith(value){pending=value}});
+ assert.equal(await pending,response);assert.equal(revalidation,'no-cache');
+ await Promise.resolve();assert.equal(cacheWrites.length,1);
+ offline=true;
+ handlers.fetch({request:{method:'GET',mode:'navigate'},respondWith(value){pending=value}});
+ assert.equal(await pending,cached);
 });

@@ -1,4 +1,9 @@
 // Local activity journal and Android Health Connect bridge.
+let healthSyncPending=false,healthSyncTimer=null;
+function hasHealthBridge(){return typeof window.AndroidHealth?.syncSteps==='function'}
+function finishHealthRequest(){
+ healthSyncPending=false;clearTimeout(healthSyncTimer);healthSyncTimer=null;
+}
 function healthState(){
  if(!state.health)state.health={steps:{},goal:6000};
  return state.health;
@@ -67,22 +72,47 @@ function renderHealth(){
  document.querySelector('#claimStepXp').disabled=!available;
  document.querySelector('#claimStepXp').textContent=available?`Récupérer +${available} XP`:'Prochain palier : 1 000 pas';
  if(total>=6000&&!available)document.querySelector('#claimStepXp').textContent='Récompenses du jour obtenues';
- document.querySelector('#healthConnection').textContent=window.AndroidHealth?'Health Connect · synchronisation à l’ouverture et à la demande':'Version web · saisis tes pas ci-dessous. La synchronisation Health Connect nécessite la version Android.';
- document.querySelector('#syncHealth').disabled=!window.AndroidHealth;
+ const native=hasHealthBridge(),enabled=window.healthConnectionState?.enabled;
+ document.querySelector('#healthConnection').textContent=window.healthBridgeIssue||(!native?'Health Connect est inaccessible depuis ce site, même installé comme raccourci sur Android. Il faut installer l’APK Android de Callisthenut pour autoriser la lecture des pas.':enabled===true?'Health Connect connecté · lecture des pas à l’ouverture et à la demande.':enabled===false?'Version Android détectée · connexion Health Connect désactivée.':'Version Android détectée · connecte Health Connect pour autoriser les pas.');
+ document.querySelector('#syncHealth').disabled=healthSyncPending;
+ document.querySelector('#syncHealth').textContent=healthSyncPending?'Synchronisation en cours…':native?'Connecter / synchroniser Health Connect':'Pourquoi la connexion est indisponible ?';
+ document.querySelector('#disconnectHealth').hidden=!native;
  document.querySelector('#recentSteps').innerHTML=Object.entries(health.steps).sort(([a],[b])=>b.localeCompare(a)).slice(0,7).map(([day,e])=>`<div class="step-history"><span>${day}</span><strong>${stepTotal(e).toLocaleString('fr-FR')} pas</strong><small>${e.source==='health-connect'?'Health Connect':'Manuel'}</small></div>`).join('');
 }
 function syncHealth(){
- if(!window.AndroidHealth){toast('Health Connect est disponible dans la version Android.');return}
+ if(!hasHealthBridge()){
+  document.querySelector('#healthStatus').textContent=window.healthBridgeIssue||'Tu utilises la version web. Chrome et les raccourcis installés depuis le site ne donnent pas accès à Health Connect. La synchronisation nécessite l’APK Android de Callisthenut ; tu peux saisir les pas manuellement ici.';
+  return;
+ }
+ if(healthSyncPending)return;
+ healthSyncPending=true;
  document.querySelector('#healthStatus').textContent='Connexion à Health Connect…';
- try{window.AndroidHealth.syncSteps()}catch{document.querySelector('#healthStatus').textContent='Connexion impossible. Réessaie depuis la version Android.'}
+ healthSyncTimer=setTimeout(()=>{
+  finishHealthRequest();document.querySelector('#healthStatus').textContent='Aucune réponse de l’application Android. Termine la demande d’autorisation si elle est ouverte, puis réessaie. Vérifie aussi que ton APK est à jour.';renderHealth();
+ },60000);
+ renderHealth();
+ try{window.AndroidHealth.syncSteps()}catch{finishHealthRequest();document.querySelector('#healthStatus').textContent='Le lien avec l’application Android a échoué. Ferme puis rouvre Callisthenut et réessaie.';renderHealth()}
 }
 window.receiveHealthSteps=function(payload){
  try{
   if(!window.AndroidHealth)throw Error('Connexion Android indisponible.');
+  if(!payload||typeof payload!=='object')throw Error('Réponse Health Connect invalide.');
+  if(payload.status==='ready'){
+   window.healthConnectionState={enabled:payload.enabled===true};renderHealth();return;
+  }
+  finishHealthRequest();
+  if(payload.status==='disconnected'){
+   window.healthConnectionState={enabled:false};document.querySelector('#healthStatus').textContent='Synchronisation désactivée. Les pas déjà enregistrés sont conservés.';renderHealth();return;
+  }
+  if(typeof payload.enabled==='boolean')window.healthConnectionState={enabled:payload.enabled};
   if(payload.error)throw Error(payload.error);
+  if(payload.hasData===false){
+   document.querySelector('#healthStatus').textContent='Connexion autorisée, mais Health Connect ne contient pas encore de pas pour aujourd’hui. Active le partage des pas dans ton application de santé, puis réessaie. Le total précédent est conservé.';renderHealth();return;
+  }
   updateSteps(payload.date,payload.steps,'health-connect');
+  window.healthConnectionState={enabled:true};renderHealth();
   document.querySelector('#healthStatus').textContent='Pas synchronisés. Le total remplace la dernière observation, sans addition.';
- }catch(error){document.querySelector('#healthStatus').textContent=error.message}
+ }catch(error){finishHealthRequest();document.querySelector('#healthStatus').textContent=error.message;renderHealth()}
 };
 document.querySelector('#manualActivityForm').addEventListener('submit',event=>{
  event.preventDefault();const form=event.currentTarget;
@@ -98,8 +128,11 @@ document.querySelector('#stepGoalForm').addEventListener('submit',event=>{
 document.querySelector('#syncHealth').addEventListener('click',syncHealth);
 document.querySelector('#claimStepXp').addEventListener('click',rewardSteps);
 document.querySelector('#disconnectHealth').addEventListener('click',()=>{
- if(window.AndroidHealth)window.AndroidHealth.disconnect();
- document.querySelector('#healthStatus').textContent='Synchronisation automatique désactivée. Les données déjà enregistrées sont conservées. Tu peux révoquer l’accès dans les paramètres Health Connect.';
+ try{
+  if(typeof window.AndroidHealth?.disconnect!=='function')return;
+  window.AndroidHealth.disconnect();finishHealthRequest();window.healthConnectionState={enabled:false};renderHealth();
+  document.querySelector('#healthStatus').textContent='Synchronisation automatique désactivée. Les données déjà enregistrées sont conservées. Tu peux révoquer l’accès dans les paramètres Health Connect.';
+ }catch{document.querySelector('#healthStatus').textContent='La déconnexion n’a pas abouti. Réessaie ou révoque l’accès dans les paramètres Health Connect.'}
 });
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)renderHealth()});
 renderHealth();
