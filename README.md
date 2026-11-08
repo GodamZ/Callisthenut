@@ -1,5 +1,11 @@
 # Callisthenut
 
+La version 15 ajoute la saisie d’activités libres (nom, durée, intensité, calories facultatives), un journal de pas par jour, un objectif ajustable et les récompenses d’exploration. Les activités libres rapportent au maximum 200 XP par jour, avec un plafond de 160 XP par activité. Les pas rapportent 10 XP par tranche de 1 000, plafonnés à 60 XP par jour, indépendamment de l’objectif choisi. Les pas n’ajoutent pas de calories pour éviter de les additionner aux activités déjà enregistrées.
+
+Dans le navigateur, les pas sont saisis manuellement : aucune lecture automatique du podomètre n’est simulée. Le total saisi remplace l’observation précédente. Le projet [Android](android/README.md) embarque le site et implémente la lecture des pas du jour via Health Connect après autorisation. Les lectures sont agrégées pour éviter les doublons entre sources ; chaque synchronisation remplace le dernier total. La version Android n’est pas compilée ni distribuée depuis ce dépôt. Elle nécessite Android Studio/JDK 17 et une validation sur appareil. Son stockage local est distinct de celui du navigateur. Voir aussi la [politique des données](privacy.html).
+
+Références techniques : [Health Connect](https://developer.android.com/health-and-fitness/health-connect/get-started), [lecture et agrégats](https://developer.android.com/health-and-fitness/health-connect/read-data), [contenu local WebView](https://developer.android.com/reference/androidx/webkit/WebViewAssetLoader).
+
 Webapp mobile de callisthénie quotidienne : séances guidées de 15 ou 20 minutes, planning sur sept jours, minuteur, objectifs et suivi local.
 
 Le planning choisit deux thèmes par date, sans reprendre ceux de la veille, y compris aux changements de semaine. Le tirage est propre à l’appareil et conservé lors des rechargements. Chaque séance contient six blocs : échauffement des deux thèmes, renforcement des deux thèmes, puis étirements associés. Les exercices peuvent solliciter plusieurs groupes musculaires ; l’alternance porte sur les thèmes programmés.

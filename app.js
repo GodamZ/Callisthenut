@@ -1,3 +1,4 @@
+function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 const EXERCISES = {
   jumping_jacks:{name:'Jumping jacks',cat:'ÉCHAUFFEMENT',tip:'Reste léger sur les appuis et garde une respiration régulière.',pose:'jack'},
   squats:{name:'Squats',cat:'JAMBES',tip:'Poitrine haute, hanches vers l’arrière et genoux dans l’axe des pieds.',pose:'squat'},
@@ -130,6 +131,7 @@ function render(){
   document.querySelector('#menuDuration').textContent=state.duration;
   document.querySelector('#menuReminder').textContent=`Tous les jours à ${state.reminder}`;
   renderRpg();
+  if(typeof renderHealth==='function')renderHealth();
   renderPlan();renderProgress();fillSettings();renderSessionPreview();
 }
 function renderPlan(){
@@ -141,10 +143,10 @@ function renderPlan(){
 function renderProgress(){
   document.querySelector('#totalSessions').textContent=state.history.length;
   document.querySelector('#totalMinutes').textContent=Math.round(state.history.reduce((n,h)=>n+h.minutes,0)*10)/10;
-  document.querySelector('#totalCalories').textContent=state.history.reduce((n,h)=>n+(h.calories||estimatedCalories(PROGRAM.find(p=>p.title===h.title)||PROGRAM[0],h.minutes)),0);
+  document.querySelector('#totalCalories').textContent=state.history.reduce((n,h)=>n+(h.calories??estimatedCalories(PROGRAM.find(p=>p.title===h.title)||PROGRAM[0],h.minutes)),0);
   const days=Array.from({length:28},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(27-i));return d});
   document.querySelector('#activityGrid').innerHTML=days.map(d=>`<span class="activity-cell ${state.history.some(h=>h.date===dateKey(d))?'active':''} ${dateKey(d)===dateKey()?'today':''}" title="${d.toLocaleDateString('fr-FR')}"></span>`).join('');
-  document.querySelector('#historyList').innerHTML=state.history.length?state.history.slice().reverse().slice(0,6).map(h=>`<div class="history-item"><div><strong>${h.title}</strong><small>${new Date(h.date+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}${h.rounds!==undefined?` · ${h.rounds} tours`:''}</small></div><span>${h.minutes} min · ≈ ${h.calories||estimatedCalories(PROGRAM.find(p=>p.title===h.title)||PROGRAM[0],h.minutes)} kcal</span></div>`).join(''):'<div class="empty-state">Ta première mission apparaîtra ici.</div>';
+  document.querySelector('#historyList').innerHTML=state.history.length?state.history.slice().reverse().slice(0,6).map(h=>`<div class="history-item"><div><strong>${escapeHtml(h.title)}</strong><small>${new Date(h.date+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}${h.rounds!==undefined?` · ${h.rounds} tours`:''}${h.source==='manual'?' · Saisie manuelle':''}</small></div><span>${h.minutes} min · ${h.estimated===false?'':'≈ '}${h.calories??estimatedCalories(PROGRAM.find(p=>p.title===h.title)||PROGRAM[0],h.minutes)} kcal</span></div>`).join(''):'<div class="empty-state">Ta première mission apparaîtra ici.</div>';
 }
 function getStreak(){let n=0,d=new Date();if(!state.history.some(h=>h.date===dateKey(d)))d.setDate(d.getDate()-1);while(state.history.some(h=>h.date===dateKey(d))){n++;d.setDate(d.getDate()-1)}return n}
 function fillSettings(){nameInput.value=state.name==='soldat'?'':state.name;durationSelect.value=state.duration;levelSelect.value=state.level;weightInput.value=state.weight;reminderTime.value=state.reminder}
@@ -323,7 +325,7 @@ function renderRpg(){
   return `<article class="quest-card ${done?'completed':''}"><span class="quest-emblem">${q.icon}</span><div class="quest-body"><span class="quest-kind">${done?'QUÊTE ACCOMPLIE':selected?'QUÊTE DU JOUR':'QUÊTE OPTIONNELLE'}</span><h3>${q.name}</h3><p>${q.detail}</p><small>+${questXp(q)} XP · ≈ ${questCalories(q)} kcal</small></div><button class="claim-button" data-claim="${q.id}" ${done?'disabled':''}>${done?'✓':'Valider'}</button></article>`;
  }).join('');
  document.querySelector('#questChoices').innerHTML=QUESTS.map(q=>`<label><input type="checkbox" data-select-quest="${q.id}" ${day.selected.includes(q.id)?'checked':''} ${Object.keys(day.claims).length?'disabled':''}> ${q.detail}</label>`).join('');
- document.querySelector('#xpLedger').innerHTML=state.rpg.ledger.slice(-10).reverse().map(e=>`<div class="history-item"><span>${e.day} · ${e.label}</span><strong>${e.xp>0?'+':''}${e.xp} XP</strong></div>`).join('')||'<p>Ton aventure commence aujourd’hui.</p>';
+ document.querySelector('#xpLedger').innerHTML=state.rpg.ledger.slice(-10).reverse().map(e=>`<div class="history-item"><span>${e.day} · ${escapeHtml(e.label)}</span><strong>${e.xp>0?'+':''}${e.xp} XP</strong></div>`).join('')||'<p>Ton aventure commence aujourd’hui.</p>';
 }
 document.querySelector('#questChoices').addEventListener('change',event=>{
  const id=event.target.dataset.selectQuest;if(!id)return;

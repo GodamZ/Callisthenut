@@ -8,7 +8,7 @@
   <title>Callisthenut</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
   <div class="app-shell">
@@ -34,6 +34,8 @@
           <div class="rpg-landscape" aria-hidden="true"><span class="sun"></span><span class="mountain far"></span><span class="mountain near"></span><span class="castle">♜</span><span class="hero-character">♞</span><span class="spark s1">✦</span><span class="spark s2">✧</span><span class="landscape-caption">LE ROYAUME DES AURORES</span></div>
           <div class="hero-profile"><div class="level-medal"><small>LVL</small><strong id="heroLevel">01</strong></div><div class="hero-info"><p class="eyebrow">TON AVENTURE COMMENCE ICI</p><h2 id="heroRank">Apprenti des aurores</h2><div class="xp-caption"><span>EXPÉRIENCE</span><strong id="xpLabel"></strong></div><progress id="heroXp" max="100" value="0" aria-label="Progression vers le prochain niveau"></progress></div></div>
         </section>
+        <section class="steps-card section-block" aria-labelledby="stepsTitle"><p class="eyebrow">EXPLORATION QUOTIDIENNE</p><h2 id="stepsTitle">Chaque pas est une aventure</h2><div class="steps-total"><strong id="stepCount">0</strong><span id="stepTargetLabel">/ 6 000 pas</span></div><progress id="stepProgress" max="100" value="0" aria-label="Objectif de pas quotidien"></progress><p id="stepSource"></p><button id="claimStepXp" class="primary-button" disabled>Prochain palier : 1 000 pas</button><p class="field-help">10 XP par tranche de 1 000 pas · maximum 60 XP/jour. Objectif personnel, ajustable ci-dessous.</p><details><summary>Mes pas et ma connexion Android</summary><p id="healthConnection"></p><div class="health-actions"><button type="button" id="syncHealth" class="secondary-button">Connecter / synchroniser Health Connect</button><button type="button" id="disconnectHealth" class="secondary-button">Désactiver la synchronisation</button></div><p id="healthStatus" role="status" aria-live="polite"></p><p class="field-help">Lecture des pas uniquement, après ton autorisation. Active le partage vers Health Connect dans ton application de santé compatible. Les données restent sur cet appareil. La synchronisation a lieu quand l’application Android est ouverte.</p><form id="manualStepsForm" class="compact-form"><label>Total de pas aujourd’hui<input name="manualSteps" type="number" min="0" max="200000" step="1" required placeholder="Ex. 4250"></label><button class="secondary-button">Enregistrer le total</button></form><p class="field-help">Saisis un total, pas des pas supplémentaires. Une synchronisation remplacera la saisie manuelle ; les deux sources ne sont jamais additionnées.</p><form id="stepGoalForm" class="compact-form"><label>Mon objectif quotidien<input name="stepGoal" type="number" min="1000" max="30000" step="1" required placeholder="Ex. 6000"></label><button class="secondary-button">Modifier l’objectif</button></form><h3>Les 7 derniers jours renseignés</h3><div id="recentSteps"></div></details></section>
+        <section class="manual-activity section-block"><div class="section-heading"><div><p class="eyebrow">TES EXPLOITS HORS ÉCRAN</p><h2>Ajouter une activité</h2></div></div><p>Natation, escalade, sport collectif, jardinage… Consigne une activité que ton téléphone n’a pas suivie.</p><form id="manualActivityForm"><label>Activité<input name="activityName" maxlength="60" required placeholder="Ex. Natation"></label><div class="activity-fields"><label>Durée en minutes<input name="activityMinutes" type="number" min="1" max="1440" step="0.1" required placeholder="30"></label><label>Intensité<select name="activityIntensity"><option value="2.5">Douce</option><option value="5" selected>Modérée</option><option value="8">Soutenue</option></select></label></div><label>Calories dépensées (facultatif)<input name="activityCalories" type="number" min="0" max="10000" step="1" placeholder="Laisser vide pour estimer"></label><p class="field-help">Sans calories renseignées, estimation selon ton poids, la durée et l’intensité. Saisis chaque activité une seule fois : les séances et quêtes déjà validées sont dans ton historique. Ces activités libres ne valident pas une quête du jour.</p><p id="activityError" role="alert"></p><button class="primary-button">Enregistrer mon exploit ✦</button></form></section>
         <section class="section-block quest-section"><div class="section-heading"><div><p class="eyebrow">LE TABLEAU DE LA GUILDE</p><h2>Tes quêtes quotidiennes</h2></div><span class="score" id="goalScore">0/2</span></div><p id="dayReward" class="daily-reward"></p><details class="quest-settings"><summary>Choisir mes quêtes du jour</summary><p>À choisir avant ta première validation. Chaque quête choisie manquée coûte 10 XP le lendemain, au maximum 30 XP par journée planifiée. Les jours sans plan sont libres.</p><div id="questChoices"></div></details><div class="goal-list" id="goalList"></div></section>
         <div class="section-heading workout-choice-heading"><div><p class="eyebrow">CHOISIS TA MISSION</p><h2>Entraînement du jour</h2></div></div>
         <section class="workout-card" id="todayWorkout">
@@ -182,8 +184,9 @@
   </dialog>
   <dialog id="questSuccess" class="quest-success"><div class="victory-star" aria-hidden="true">✦</div><p class="eyebrow">VICTOIRE !</p><h2 id="questRewardTitle"></h2><strong id="questReward" class="xp-reward"></strong><p id="questRewardDetail"></p><p id="questLevelUp" aria-live="polite"></p><button id="closeQuestSuccess" class="primary-button">Continuer l’aventure →</button></dialog>
   <div class="toast" id="toast" role="status"></div>
-  <script src="exercise-catalog.js?v=14"></script>
-  <script src="workout-planner.js?v=14"></script>
-  <script src="app.js?v=14"></script>
+  <script src="exercise-catalog.js?v=15"></script>
+  <script src="workout-planner.js?v=15"></script>
+  <script src="app.js?v=15"></script>
+  <script src="health.js?v=15"></script>
 </body>
 </html>

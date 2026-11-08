@@ -10,7 +10,7 @@ const context=vm.createContext({console,crypto:require('node:crypto').webcrypto,
   document:{querySelector:element,querySelectorAll:()=>[],addEventListener(){}},
   window:{addEventListener(){}},navigator:{},setInterval:()=>1,clearInterval(){},setTimeout:()=>1,clearTimeout(){},scrollTo(){}});
 for(const match of fs.readFileSync('index.html','utf8').matchAll(/id="([^"]+)"/g))context[match[1]]=element('#'+match[1]);
-for(const file of ['exercise-catalog.js','workout-planner.js','app.js'])vm.runInContext(fs.readFileSync(file,'utf8'),context,{filename:file});
+for(const file of ['exercise-catalog.js','workout-planner.js','app.js','health.js'])vm.runInContext(fs.readFileSync(file,'utf8'),context,{filename:file});
 const run=code=>vm.runInContext(code,context);
 test('all catalogue records have unique IDs, guidance and available pictures',()=>{
  const catalog=run('CATALOG');assert.equal(new Set(catalog.map(e=>e.id)).size,catalog.length);
@@ -138,4 +138,51 @@ test('missed planned days lose at most 30 XP once, never below zero; unplanned d
   run('state.rpg.xp=5;state.rpg.days["2020-01-02"]={selected:["walk"],claims:{},settled:false};settleDays()');
   assert.equal(run('state.rpg.xp'),0);
  }finally{run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState()`)}
+});
+
+test('manual activity validation rejects invalid data and preserves explicit zero calories',()=>{
+ for(const data of [
+  {name:'',minutes:20,met:5},{name:'Swim',minutes:-1,met:5},{name:'Swim',minutes:20,met:99},
+  {name:'Swim',minutes:20,met:5,calories:'NaN'},{name:'Swim',minutes:20,met:5,calories:-5}
+ ])assert.throws(()=>run(`activityInput(${JSON.stringify(data)})`));
+ assert.equal(run('activityInput({name:"Swim",minutes:20,met:5,calories:"0"}).calories'),0);
+ assert.equal(run('activityInput({name:"Swim",minutes:20,met:5,calories:""}).estimated'),true);
+});
+test('manual activity XP is capped across records and journal labels are escaped',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg.xp=0;state.history=[]');
+  assert.equal(run('recordActivity({name:"<img src=x onerror=alert(1)>",minutes:120,met:5,calories:600})'),160);
+  assert.equal(run('recordActivity({name:"Swim",minutes:120,met:5,calories:600})'),40);
+  assert.equal(run('recordActivity({name:"Dance",minutes:120,met:5,calories:600})'),0);
+  assert.equal(run('state.history.length'),3);assert.equal(run('state.rpg.xp'),200);
+  assert.ok(element('#historyList').innerHTML.includes('&lt;img'));
+  assert.ok(!element('#xpLedger').innerHTML.includes('<img'));
+ }finally{run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState()`)}
+});
+test('step observations replace totals; sources are not added and rewards are idempotent',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.health={steps:{},goal:6000};state.rpg.xp=0');
+  run('updateSteps(dateKey(),3000,"manual")');assert.equal(run('rewardSteps()'),30);
+  run('updateSteps(dateKey(),5000,"health-connect")');assert.equal(run('stepTotal(healthState().steps[dateKey()])'),5000);
+  assert.equal(run('rewardSteps()'),20);
+  run('updateSteps(dateKey(),5000,"health-connect")');assert.equal(run('rewardSteps()'),0);
+  run('updateSteps(dateKey(),12000,"health-connect")');assert.equal(run('rewardSteps()'),10);
+  run('setStepGoal(1000)');assert.equal(run('rewardSteps()'),0);
+  assert.equal(run('state.rpg.xp'),60);assert.equal(run('loadState().health.steps[dateKey()].rewarded'),60);
+  run('updateSteps(dateKey(),0,"health-connect")');assert.equal(run('rewardSteps()'),0);
+ }finally{run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState()`)}
+});
+test('steps reject stale dates, invalid counts, unknown sources and invalid goals',()=>{
+ for(const code of ['updateSteps("2020-01-01",123,"manual")','updateSteps(dateKey(),-1,"manual")','updateSteps(dateKey(),1.5,"manual")','updateSteps(dateKey(),300000,"manual")','updateSteps(dateKey(),50,"sensor")','setStepGoal(0)','setStepGoal(6000.5)'])assert.throws(()=>run(code));
+});
+test('Health Connect callback handles unavailable bridge and rejected permission without fabricating steps',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.health={steps:{},goal:6000};window.receiveHealthSteps({date:dateKey(),steps:1000})');
+  assert.equal(run('Object.keys(state.health.steps).length'),0);
+  run('window.AndroidHealth={};window.receiveHealthSteps({error:"Refus"})');assert.equal(element('#healthStatus').textContent,'Refus');
+  run('window.receiveHealthSteps({date:dateKey(),steps:4000})');assert.equal(run('stepTotal(state.health.steps[dateKey()])'),4000);
+ }finally{run('delete window.AndroidHealth');run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState()`)}
 });
