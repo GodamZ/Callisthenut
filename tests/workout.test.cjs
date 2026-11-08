@@ -111,3 +111,31 @@ test('precache includes every HTML script/style URL and every referenced image',
   assert.equal(run('session.running'),true);
   run('closeWorkout()');delete context.navigator.wakeLock;
  });
+
+test('RPG levels start at one, thresholds are exact and level 99 is the cap',()=>{
+ assert.equal(run('heroLevel(0)'),1);
+ assert.equal(run('heroLevel(xpThreshold(20)-1)'),19);
+ assert.equal(run('heroLevel(xpThreshold(20))'),20);
+ assert.equal(run('heroLevel(9999999)'),99);
+});
+test('quest claims reward calories, daily bonus once, and survive reload without duplicates',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:0,days:{},ledger:[]};settleDays()');
+  const gain=run('claimQuest("walk",100,false)');assert.equal(gain,65);
+  assert.equal(run('claimQuest("walk",100,false)'),0);
+  assert.equal(run('claimQuest("water",0,false)'),120);
+  assert.equal(run('state.rpg.xp'),185);
+  assert.equal(run('loadState().rpg.xp'),185);
+  assert.equal(run('questXp(QUESTS[0],999999)'),160);
+ }finally{run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState()`)}
+});
+test('missed planned days lose at most 30 XP once, never below zero; unplanned days are free',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:100,days:{"2020-01-01":{selected:["walk","water","run","bike"],claims:{},settled:false}},ledger:[]};settleDays()');
+  assert.equal(run('state.rpg.xp'),70);run('settleDays()');assert.equal(run('state.rpg.xp'),70);
+  run('state.rpg.xp=5;state.rpg.days["2020-01-02"]={selected:["walk"],claims:{},settled:false};settleDays()');
+  assert.equal(run('state.rpg.xp'),0);
+ }finally{run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState()`)}
+});

@@ -27,3 +27,13 @@ Puis ouvrir `http://localhost:8080` dans un navigateur. Sur mobile, ouvrir l’a
 Les réglages, objectifs et séances terminées sont enregistrés dans le navigateur. Les notifications web ne peuvent déclencher un rappel programmé que tant que l’application reste ouverte ; un service de notifications distant sera nécessaire pour des rappels totalement autonomes.
 
 Chaque push sur `main` déclenche automatiquement le déploiement GitHub Pages défini dans `.github/workflows/pages.yml`.
+
+## Aventure RPG (version 14)
+
+Six quêtes : calisthénie, marche, course, vélo, kettlebell et hydratation. Les séances guidées restent accessibles dans le dojo. Le niveau RPG est distinct de la difficulté des exercices. Le profil et l’historique sont conservés ; l’aventure démarre au niveau 1.
+
+Chaque quête est récompensée une fois par date locale : base de 40 à 60 XP + 1 XP pour 5 kcal estimées, supplément plafonné à 100 XP. L’hydratation ne dépense aucune calorie. Les validations manuelles correspondent aux durées affichées ; les séances guidées utilisent leur durée enregistrée. Les quêtes choisies sont verrouillées après la première validation. Toutes les terminer donne un bonus unique de 80 XP.
+
+Chaque quête choisie manquée retire 10 XP le lendemain : maximum 30 XP par journée planifiée, sans descendre sous zéro. Les jours sans plan sont libres. La sauvegarde locale évite les doubles récompenses et pénalités.
+
+Seuil du niveau N : `100*(N-1) + 20*(N-1)^2`. Maximum : niveau 99. Le niveau 20 (9 120 XP) est un jalon ludique de régularité. Les repères adultes de l’OMS sont présentés séparément et sourcés dans Progression : aucun niveau ne mesure la santé.

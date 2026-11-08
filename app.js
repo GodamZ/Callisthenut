@@ -43,7 +43,16 @@ for(const [id,theme] of Object.entries({jumping_jacks:'cardio',pushups:'arms',lu
 for(const exercise of CATALOG)EXERCISES[exercise.id]={...exercise,cat:exercise.themes.map(t=>THEMES[t]).join(' · ')};
 const PROGRAM=[{title:'Ancienne séance',met:6.5}];
 const DAY_NAMES=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+const QUESTS=[
+ {id:'workout',icon:'⚔',name:'La voie du guerrier',detail:'Calisthénie · 15 min',minutes:15,met:5,xp:60},
+ {id:'walk',icon:'❀',name:'Explorer les sentiers',detail:'Marche active · 20 min',minutes:20,met:3.5,xp:45},
+ {id:'run',icon:'➶',name:'La foulée du vent',detail:'Course · 15 min',minutes:15,met:8,xp:60},
+ {id:'bike',icon:'☸',name:'Traverser la vallée',detail:'Vélo · 30 min',minutes:30,met:6,xp:60},
+ {id:'kettlebell',icon:'◆',name:'La force du cristal',detail:'Kettlebell · 15 min',minutes:15,met:6,xp:60},
+ {id:'water',icon:'♧',name:'La source de vie',detail:'Hydratation · cible personnelle',minutes:0,met:0,xp:40}
+];
 const state=loadState();
+initRpg();
 state.duration=Number(state.duration)===20?20:15;
 if(!Number.isInteger(state.planSeed)){state.planSeed=crypto.getRandomValues(new Uint32Array(1))[0];saveState()}
 let session=null,timerId=null,reminderId=null,audioContext=null,cindySession=null,cindyTimerId=null,kettlebellSession=null,kettlebellTimerId=null;
@@ -76,7 +85,14 @@ function saveState(){localStorage.setItem('callisthenut-state',JSON.stringify(st
 function dateKey(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function todayProgram(){return programForDate(new Date(),state.duration,state.planSeed)}
 function estimatedCalories(program=todayProgram(),minutes=state.duration){return Math.round(program.met*3.5*state.weight/200*minutes)}
-function completeDailyWorkout(){const goals=new Set(state.goals[dateKey()]||[]);goals.add('workout');state.goals[dateKey()]=[...goals]}
+function completeDailyWorkout(){
+ const h=state.history[state.history.length-1];
+ if(!h.minutes){document.querySelector("#finishXp").textContent="0 XP";return}
+ const previous=heroLevel();
+ const id=h.title.toLowerCase().includes('kettlebell')?'kettlebell':'workout';
+ const reward=claimQuest(id,h.calories,false);
+ document.querySelector('#finishXp').textContent=reward?`+${reward} XP${heroLevel()>previous?" · LVL "+heroLevel()+" !":""}`:'Quête déjà récompensée aujourd’hui';
+}
 function svg(pose){
   const poses={
     squat:'<circle cx="115" cy="48" r="17"/><path d="M114 67l-15 58 54 18m-39-71 42 38m-52 17-36 38m85-22 20 43M96 88l-40 20m62-24 32 9"/>',
@@ -99,6 +115,7 @@ function svg(pose){
   return `<svg viewBox="0 0 256 220" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">${poses[pose]||poses.squat}</g><path d="M40 202h176" stroke="currentColor" stroke-width="3" opacity=".18"/></svg>`;
 }
 function render(){
+  settleDays();
   const now=new Date(),program=todayProgram(),doneGoals=state.goals[dateKey()]||[];
   document.querySelector('#todayDate').textContent=now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();
   document.querySelector('#userName').textContent=state.name||'soldat';
@@ -112,9 +129,7 @@ function render(){
   document.querySelector('#menuLevel').textContent=['','Débutant','Intermédiaire','Avancé'][state.level];
   document.querySelector('#menuDuration').textContent=state.duration;
   document.querySelector('#menuReminder').textContent=`Tous les jours à ${state.reminder}`;
-  const goals=[['workout','◎','Terminer la mission','Callisthénie, CINDY ou kettlebell'],['water','◇','Boire suffisamment','Objectif personnel : 6 à 8 verres'],['walk','↗','Bouger en plus','10 minutes de marche active']];
-  document.querySelector('#goalList').innerHTML=goals.map(g=>`<button class="goal-item ${doneGoals.includes(g[0])?'done':''}" data-goal="${g[0]}"><span class="goal-check"></span><span class="goal-icon">${g[1]}</span><span class="goal-text"><strong>${g[2]}</strong><small>${g[3]}</small></span></button>`).join('');
-  document.querySelector('#goalScore').textContent=`${doneGoals.length}/3`;
+  renderRpg();
   renderPlan();renderProgress();fillSettings();renderSessionPreview();
 }
 function renderPlan(){
@@ -203,7 +218,8 @@ function toast(msg){const el=document.querySelector('#toast');el.textContent=msg
 
 function navigateTo(target){document.querySelectorAll('.nav-item,.view').forEach(x=>x.classList.remove('active'));document.querySelector(`.nav-item[data-target="${target}"]`).classList.add('active');document.querySelector(`[data-view="${target}"]`).classList.add('active');scrollTo({top:0,behavior:'smooth'})}
 document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>navigateTo(b.dataset.target)));
-document.querySelector('#goalList').addEventListener('click',e=>{const item=e.target.closest('[data-goal]');if(!item)return;const goals=new Set(state.goals[dateKey()]||[]);goals.has(item.dataset.goal)?goals.delete(item.dataset.goal):goals.add(item.dataset.goal);state.goals[dateKey()]=[...goals];saveState();render()});
+document.querySelector('#goalList').addEventListener('click',e=>{const item=e.target.closest('[data-claim]');if(item)claimQuest(item.dataset.claim)});
+
 document.querySelector('#startWorkout').addEventListener('click',startWorkout);
 document.querySelector('#closePlayer').addEventListener('click',closeWorkout);
 document.querySelector('#nextExercise').addEventListener('click',()=>advance(1));
@@ -250,3 +266,71 @@ renderCatalog();
 document.querySelector('#workoutPlayer').addEventListener('cancel',event=>{event.preventDefault();closeWorkout()});
 document.addEventListener('visibilitychange',()=>{syncScreenWakeLock();if(!document.hidden&&!session)render()});
 for(const [id,close] of [['#cindyPlayer',closeCindyWorkout],['#kettlebellPlayer',closeKettlebellWorkout]])document.querySelector(id).addEventListener('cancel',event=>{event.preventDefault();close()});
+
+// RPG progression is separate from the exercise difficulty preference.
+function xpThreshold(level){return 100*(level-1)+20*(level-1)*(level-1)}
+function heroLevel(xp=state.rpg.xp){let level=1;while(level<99&&xp>=xpThreshold(level+1))level++;return level}
+function initRpg(){
+ if(!state.rpg)state.rpg={xp:0,days:{},ledger:[]};
+ settleDays();
+}
+function settleDays(){
+ const today=dateKey();
+ for(const [day,entry] of Object.entries(state.rpg.days)){
+  if(day>=today||entry.settled)continue;
+  const missed=entry.selected.filter(id=>!entry.claims[id]).length;
+  const loss=Math.min(30,missed*10,state.rpg.xp);
+  state.rpg.xp-=loss;entry.settled=true;
+  if(loss)state.rpg.ledger.push({day,xp:-loss,label:'Quêtes inachevées'});
+ }
+ if(!state.rpg.days[today])state.rpg.days[today]={selected:['walk','water'],claims:{},bonus:false,settled:false};
+ saveState();
+}
+function questCalories(q){return Math.round(q.met*3.5*state.weight/200*q.minutes)}
+function questXp(q,calories=questCalories(q)){return q.xp+Math.min(100,Math.floor(Math.max(0,calories)/5))}
+function claimQuest(id,calories,show=true){
+ settleDays();const day=state.rpg.days[dateKey()],q=QUESTS.find(q=>q.id===id);
+ if(!q||day.claims[id])return 0;
+ const previous=heroLevel(),energy=calories===undefined?questCalories(q):calories;
+ let gain=questXp(q,energy);day.claims[id]={xp:gain,calories:energy};
+ if(!day.selected.includes(id))day.selected.push(id);
+ state.goals[dateKey()]=Object.keys(day.claims);
+ let bonus=0;
+ if(!day.bonus&&day.selected.every(id=>day.claims[id])){bonus=80;gain+=bonus;day.bonus=true}
+ state.rpg.xp=Math.min(xpThreshold(99),state.rpg.xp+gain);
+ state.rpg.ledger.push({day:dateKey(),xp:gain,label:q.name});
+ if(show&&q.minutes)state.history.push({id:Date.now(),date:dateKey(),title:q.detail,minutes:q.minutes,calories:energy});
+ saveState();render();
+ if(show){
+  document.querySelector('#questReward').textContent=`+${gain} XP`;
+  document.querySelector('#questRewardTitle').textContent=q.name;
+  document.querySelector('#questRewardDetail').textContent=`${q.xp} XP de quête + ${questXp(q,energy)-q.xp} XP d’énergie${bonus?' + 80 XP de journée réussie':''} · ≈ ${energy} kcal`;
+  document.querySelector('#questLevelUp').textContent=heroLevel()>previous?`NIVEAU SUPÉRIEUR ! LVL ${heroLevel()}`:`LVL ${heroLevel()} · Chaque petit pas te fait avancer.`;
+  document.querySelector('#questSuccess').showModal();
+ }
+ return gain;
+}
+function renderRpg(){
+ const day=state.rpg.days[dateKey()],level=heroLevel(),floor=xpThreshold(level),next=xpThreshold(Math.min(99,level+1));
+ document.querySelector('#heroLevel').textContent=String(level).padStart(2,'0');
+ document.querySelector('#heroRank').textContent=level>=99?'Légende de lumière':level>=50?'Gardien des sommets':level>=20?'Aventurier accompli':'Apprenti des aurores';
+ document.querySelector('#xpLabel').textContent=level===99?'Niveau maximum atteint':`${state.rpg.xp-floor} / ${next-floor} XP`;
+ document.querySelector('#heroXp').value=level===99?100:(state.rpg.xp-floor)/(next-floor)*100;
+ document.querySelector('#dayReward').textContent=day.bonus?'✦ Bonus de journée obtenu : +80 XP':'✦ Termine tes quêtes choisies : +80 XP';
+ document.querySelector('#goalScore').textContent=`${day.selected.filter(id=>day.claims[id]).length}/${day.selected.length}`;
+ document.querySelector('#goalList').innerHTML=QUESTS.map(q=>{
+  const done=!!day.claims[q.id],selected=day.selected.includes(q.id);
+  return `<article class="quest-card ${done?'completed':''}"><span class="quest-emblem">${q.icon}</span><div class="quest-body"><span class="quest-kind">${done?'QUÊTE ACCOMPLIE':selected?'QUÊTE DU JOUR':'QUÊTE OPTIONNELLE'}</span><h3>${q.name}</h3><p>${q.detail}</p><small>+${questXp(q)} XP · ≈ ${questCalories(q)} kcal</small></div><button class="claim-button" data-claim="${q.id}" ${done?'disabled':''}>${done?'✓':'Valider'}</button></article>`;
+ }).join('');
+ document.querySelector('#questChoices').innerHTML=QUESTS.map(q=>`<label><input type="checkbox" data-select-quest="${q.id}" ${day.selected.includes(q.id)?'checked':''} ${Object.keys(day.claims).length?'disabled':''}> ${q.detail}</label>`).join('');
+ document.querySelector('#xpLedger').innerHTML=state.rpg.ledger.slice(-10).reverse().map(e=>`<div class="history-item"><span>${e.day} · ${e.label}</span><strong>${e.xp>0?'+':''}${e.xp} XP</strong></div>`).join('')||'<p>Ton aventure commence aujourd’hui.</p>';
+}
+document.querySelector('#questChoices').addEventListener('change',event=>{
+ const id=event.target.dataset.selectQuest;if(!id)return;
+ settleDays();const day=state.rpg.days[dateKey()];if(Object.keys(day.claims).length)return;
+ const chosen=new Set(day.selected);event.target.checked?chosen.add(id):chosen.delete(id);
+ if(!chosen.size){renderRpg();toast('Choisis au moins une quête.');return}
+ day.selected=[...chosen];saveState();renderRpg();
+});
+document.querySelector('#closeQuestSuccess').addEventListener('click',()=>document.querySelector('#questSuccess').close());
+setInterval(()=>{if(!session&&!cindySession&&!kettlebellSession)render()},60000);

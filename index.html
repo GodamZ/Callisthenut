@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#111411">
+  <meta name="theme-color" content="#6452cd">
   <meta name="description" content="Routine quotidienne de callisthénie guidée en 15 à 20 minutes.">
   <title>Callisthenut</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#today" aria-label="Callisthenut, accueil"><span class="brand-mark">C</span><span>CALLISTHENUT</span></a>
+      <a class="brand" href="#today" aria-label="Callisthenut, accueil"><span class="brand-mark">C</span><span>CALLISTHENUT ✦</span></a>
       <button class="icon-button" id="settingsButton" aria-label="Ouvrir les réglages">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.42 1.42-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20h-2v-.08a1.7 1.7 0 0 0-1.1-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06-1.42-1.42.06-.06A1.7 1.7 0 0 0 9.36 15a1.7 1.7 0 0 0-1.56-1.03H7.7v-2h.1a1.7 1.7 0 0 0 1.56-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06 1.42-1.42.06.06a1.7 1.7 0 0 0 1.88.34 1.7 1.7 0 0 0 1.03-1.56V6.3h2v.08a1.7 1.7 0 0 0 1.1 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06L19.8 8.96l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03h.08v2h-.08A1.7 1.7 0 0 0 19.4 15Z"/></svg>
       </button>
@@ -24,12 +24,17 @@
         <div class="hero">
           <div>
             <p class="eyebrow" id="todayDate"></p>
-            <h1>Bonjour <span id="userName">soldat</span>.</h1>
-            <p class="hero-copy">Un peu chaque jour. Fort pour longtemps.</p>
+            <h1>En route, <span id="userName">soldat</span>.</h1>
+            <p class="hero-copy">Un nouveau jour. Une nouvelle aventure.</p>
           </div>
           <div class="streak-card" aria-label="Série en cours"><span class="streak-icon">✦</span><strong id="streakCount">0</strong><small>jours</small></div>
         </div>
 
+        <section class="hero-panel" aria-label="Personnage et expérience">
+          <div class="rpg-landscape" aria-hidden="true"><span class="sun"></span><span class="mountain far"></span><span class="mountain near"></span><span class="castle">♜</span><span class="hero-character">♞</span><span class="spark s1">✦</span><span class="spark s2">✧</span><span class="landscape-caption">LE ROYAUME DES AURORES</span></div>
+          <div class="hero-profile"><div class="level-medal"><small>LVL</small><strong id="heroLevel">01</strong></div><div class="hero-info"><p class="eyebrow">TON AVENTURE COMMENCE ICI</p><h2 id="heroRank">Apprenti des aurores</h2><div class="xp-caption"><span>EXPÉRIENCE</span><strong id="xpLabel"></strong></div><progress id="heroXp" max="100" value="0" aria-label="Progression vers le prochain niveau"></progress></div></div>
+        </section>
+        <section class="section-block quest-section"><div class="section-heading"><div><p class="eyebrow">LE TABLEAU DE LA GUILDE</p><h2>Tes quêtes quotidiennes</h2></div><span class="score" id="goalScore">0/2</span></div><p id="dayReward" class="daily-reward"></p><details class="quest-settings"><summary>Choisir mes quêtes du jour</summary><p>À choisir avant ta première validation. Chaque quête choisie manquée coûte 10 XP le lendemain, au maximum 30 XP par journée planifiée. Les jours sans plan sont libres.</p><div id="questChoices"></div></details><div class="goal-list" id="goalList"></div></section>
         <div class="section-heading workout-choice-heading"><div><p class="eyebrow">CHOISIS TA MISSION</p><h2>Entraînement du jour</h2></div></div>
         <section class="workout-card" id="todayWorkout">
           <div class="workout-visual" id="heroVisual"></div>
@@ -58,11 +63,6 @@
           <div class="cindy-actions"><button class="kettlebell-start primary" id="startKettlebellClassic"><span>Essentiel</span><small>18 MIN</small></button><button class="kettlebell-start" id="startKettlebellBeginner"><span>Initiation</span><small>15 MIN</small></button></div>
         </section>
 
-        <section class="section-block">
-          <div class="section-heading"><div><p class="eyebrow">OBJECTIFS DU JOUR</p><h2>Rester en mouvement</h2></div><span class="score" id="goalScore">0/3</span></div>
-          <div class="goal-list" id="goalList"></div>
-        </section>
-
         <section class="quote-card"><span>“</span><p>La discipline, c'est choisir entre ce que tu veux maintenant et ce que tu veux le plus.</p></section>
       </section>
 
@@ -74,7 +74,8 @@
       </section>
 
       <section class="view" id="progressView" data-view="progress">
-        <div class="page-heading"><p class="eyebrow">PROGRESSION</p><h1>Les efforts s'additionnent.</h1><p>Tout est enregistré uniquement sur cet appareil.</p></div>
+        <div class="page-heading"><p class="eyebrow">PROGRESSION</p><h1>Ton journal d’aventure.</h1><p>Tout est enregistré uniquement sur cet appareil.</p></div>
+        <section class="milestone-card"><p class="eyebrow">CAP SUR LE NIVEAU 20</p><h2>Aventurier accompli</h2><p>Un jalon de régularité dans le jeu, pas une mesure de santé. Aucun niveau ne garantit d’être en bonne santé.</p><p>Repères adultes : 150 à 300 minutes d’activité modérée par semaine (ou 75 à 150 minutes soutenues), et du renforcement au moins 2 jours par semaine. Adapte les quêtes et le repos à tes capacités.</p><a href="https://www.who.int/europe/news-room/fact-sheets/item/physical-activity" target="_blank" rel="noopener">Consulter les repères de l’OMS ↗</a><p>De LVL 1 à 99 : 100 × (niveau − 1) + 20 × (niveau − 1)² XP cumulés. Le niveau 20 demande 9 120 XP.</p></section><section class="section-block"><h2>Les récompenses de la guilde</h2><div id="xpLedger"></div></section>
         <div class="stat-grid">
           <article class="stat-card dark"><small>SÉRIE ACTUELLE</small><strong><span id="progressStreak">0</span> j</strong><p>Continue demain.</p></article>
           <article class="stat-card"><small>SÉANCES</small><strong id="totalSessions">0</strong><p>terminées</p></article>
@@ -173,15 +174,16 @@
       <label>Ton prénom<input id="nameInput" maxlength="20" placeholder="Soldat"></label>
       <label>Durée des séances<select id="durationSelect"><option value="15">15 minutes</option><option value="20">20 minutes</option></select></label>
       <label>Ton poids (pour estimer les calories)<input type="number" id="weightInput" min="35" max="250" step="1" inputmode="decimal" value="70"><small class="field-help">L’estimation reste indicative et varie selon l’intensité réelle.</small></label>
-      <label>Niveau<select id="levelSelect"><option value="1">Débutant</option><option value="2">Intermédiaire</option><option value="3">Avancé</option></select></label>
+      <label>Difficulté des exercices<select id="levelSelect"><option value="1">Débutant</option><option value="2">Intermédiaire</option><option value="3">Avancé</option></select></label>
       <div class="setting-row"><div><strong>Rappel quotidien</strong><small id="notificationStatus">Autorise les notifications du navigateur</small></div><button type="button" class="secondary-button" id="enableNotifications">Activer</button></div>
       <label>Heure du rappel<input type="time" id="reminderTime" value="18:30"></label>
       <button class="primary-button save-settings" id="saveSettings" value="default">Enregistrer</button>
     </form>
   </dialog>
+  <dialog id="questSuccess" class="quest-success"><div class="victory-star" aria-hidden="true">✦</div><p class="eyebrow">VICTOIRE !</p><h2 id="questRewardTitle"></h2><strong id="questReward" class="xp-reward"></strong><p id="questRewardDetail"></p><p id="questLevelUp" aria-live="polite"></p><button id="closeQuestSuccess" class="primary-button">Continuer l’aventure →</button></dialog>
   <div class="toast" id="toast" role="status"></div>
-  <script src="exercise-catalog.js?v=13"></script>
-  <script src="workout-planner.js?v=13"></script>
-  <script src="app.js?v=13"></script>
+  <script src="exercise-catalog.js?v=14"></script>
+  <script src="workout-planner.js?v=14"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>
