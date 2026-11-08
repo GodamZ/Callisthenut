@@ -15,22 +15,24 @@ function activityInput(data){
 }
 function recordActivity(data){
  const activity=activityInput(data);settleDays();
+ const beforeXp=state.rpg.xp;
  const day=dateKey(),used=state.history.filter(h=>h.date===day&&h.source==='manual').reduce((sum,h)=>sum+(h.xp||0),0);
  // A shared daily allowance prevents farming XP by splitting one activity.
  const proposed=Math.min(160,Math.floor(activity.minutes*2)+Math.floor(activity.calories/5));
  const gain=Math.min(proposed,Math.max(0,200-used),xpThreshold(99)-state.rpg.xp);
  state.history.push({id:crypto.randomUUID(),date:day,title:activity.name,minutes:activity.minutes,calories:activity.calories,estimated:activity.estimated,source:'manual',xp:gain});
  state.rpg.xp+=gain;state.rpg.ledger.push({day,xp:gain,label:activity.name});saveState();render();renderHealth();
- showActivityReward(activity.name,gain,`${activity.minutes} min · ${activity.estimated?'≈ ':''}${activity.calories} kcal · Récompenses des activités libres : maximum 200 XP par jour.`);
+ showActivityReward(activity.name,gain,`${activity.minutes} min · ${activity.estimated?'≈ ':''}${activity.calories} kcal · Récompenses des activités libres : maximum 200 XP par jour.`,beforeXp);
  return gain;
 }
-function showActivityReward(name,xp,detail){
+function showActivityReward(name,xp,detail,beforeXp=state.rpg.xp-xp){
  navigateTo('today');
  document.querySelector('#questRewardTitle').textContent=name;
  document.querySelector('#questReward').textContent=`+${xp} XP`;
  document.querySelector('#questRewardDetail').textContent=detail;
- document.querySelector('#questLevelUp').textContent=`LVL ${heroLevel()} · Continue ton aventure !`;
+ document.querySelector('#questLevelUp').textContent='Chaque petit pas fait avancer ton aventure.';
  document.querySelector('#questSuccess').showModal();
+ animateXpReward('quest',beforeXp,state.rpg.xp);
 }
 function updateSteps(day,count,source){
  if(day!==dateKey()||!Number.isSafeInteger(count)||count<0||count>200000||!['manual','health-connect'].includes(source))throw Error('Nombre de pas du jour invalide (0 à 200 000).');

@@ -50,9 +50,13 @@ const QUESTS=[
  {id:'run',icon:'➶',name:'La foulée du vent',detail:'Course · 15 min',minutes:15,met:8,xp:60},
  {id:'bike',icon:'☸',name:'Traverser la vallée',detail:'Vélo · 30 min',minutes:30,met:6,xp:60},
  {id:'kettlebell',icon:'◆',name:'La force du cristal',detail:'Kettlebell · 15 min',minutes:15,met:6,xp:60},
+ {id:'shadowboxing',icon:'✊',name:'Shadow boxing',detail:'Boxe dans le vide · 15 min',minutes:15,met:5,xp:60},
+ {id:'bedtime',icon:'☾',name:'Se coucher tôt',detail:'Sommeil · défi permanent',minutes:0,met:0,xp:40,permanent:true},
+ {id:'nutrition',icon:'♧',name:'Bien manger',detail:'Alimentation · déclaration du jour',minutes:0,met:0,xp:0,permanent:true},
  {id:'water',icon:'♧',name:'La source de vie',detail:'Hydratation · cible personnelle',minutes:0,met:0,xp:40}
 ];
 let activeQuest=null;
+let xpAnimation=null,pendingXpReward=null;
 const state=loadState();
 initRpg();
 state.duration=Number(state.duration)===20?20:15;
@@ -88,6 +92,7 @@ function dateKey(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+
 function todayProgram(){return programForDate(new Date(),state.duration,state.planSeed)}
 function estimatedCalories(program=todayProgram(),minutes=state.duration){return Math.round(program.met*3.5*state.weight/200*minutes)}
 function completeDailyWorkout(){
+ pendingXpReward=null;
  const h=state.history[state.history.length-1];
  if(!h.minutes){document.querySelector("#finishXp").textContent="0 XP";return}
  const previous=heroLevel();
@@ -182,7 +187,7 @@ function updatePlayer(){
 function finishWorkout(){
   clearInterval(timerId);const p=session.program,minutes=Math.round(session.elapsed/60*10)/10,calories=estimatedCalories(p,minutes);state.history.push({id:Date.now(),date:session.date,title:p.title,minutes,calories});
   completeDailyWorkout();saveState();session=null;syncScreenWakeLock();workoutPlayer.close();document.title='Callisthenut';render();
-  finishMinutes.textContent=minutes;finishCalories.textContent=calories;finishExercises.textContent=p.ids.length;finishMetricLabel.textContent='EXERCICES';navigateTo('today');finishScreen.showModal();
+  finishMinutes.textContent=minutes;finishCalories.textContent=calories;finishExercises.textContent=p.ids.length;finishMetricLabel.textContent='EXERCICES';navigateTo('today');finishScreen.showModal();animateFinishedWorkout();
 }
 function closeWorkout(){clearInterval(timerId);session=null;syncScreenWakeLock();workoutPlayer.close();document.title='Callisthenut'}
 function cindyConfig(variant){return variant==='classic'?{name:'CINDY classique',minutes:20,met:8,reps:30,moves:[['5','Tractions','Menton au-dessus de la barre'],['10','Pompes','Poitrine proche du sol'],['15','Squats','Hanches sous les genoux']]}:{name:'CINDY débutant',minutes:15,met:6,reps:18,moves:[['3','Tirages horizontaux','Sous une table parfaitement stable'],['6','Pompes inclinées','Mains sur un support stable'],['9','Squats','Amplitude confortable']]}}
@@ -197,7 +202,7 @@ function updateCindy(){if(!cindySession)return;const value=cindySession.prep||ci
 function closeCindyWorkout(){clearInterval(cindyTimerId);cindySession=null;syncScreenWakeLock();document.querySelector('#cindyPlayer').close()}
 function finishCindyWorkout(){
   if(!cindySession)return;clearInterval(cindyTimerId);const {config,rounds,remaining}=cindySession,elapsed=Math.max(1,Math.round((config.minutes*60-remaining)/60)),calories=Math.round(config.met*3.5*state.weight/200*elapsed),reps=rounds*config.reps;
-  state.history.push({id:Date.now(),date:dateKey(),title:config.name,minutes:elapsed,calories,rounds,reps});completeDailyWorkout();saveState();cindySession=null;syncScreenWakeLock();document.querySelector('#cindyPlayer').close();render();finishMinutes.textContent=elapsed;finishCalories.textContent=calories;finishExercises.textContent=reps;finishMetricLabel.textContent='RÉPÉTITIONS';navigateTo('today');finishScreen.showModal();
+  state.history.push({id:Date.now(),date:dateKey(),title:config.name,minutes:elapsed,calories,rounds,reps});completeDailyWorkout();saveState();cindySession=null;syncScreenWakeLock();document.querySelector('#cindyPlayer').close();render();finishMinutes.textContent=elapsed;finishCalories.textContent=calories;finishExercises.textContent=reps;finishMetricLabel.textContent='RÉPÉTITIONS';navigateTo('today');finishScreen.showModal();animateFinishedWorkout();
 }
 function kettlebellConfig(variant){return variant==='classic'?{name:'Kettlebell essentiel',minutes:18,met:7.5,reps:38,moves:[['10','Deadlifts','Pousse les hanches en arrière, dos neutre'],['8/bras','Rowings unilatéraux','Coude vers la hanche, buste stable'],['12','Swings russes','Puissance des hanches, pas des bras'],['20 s','Gainage avec tirage','Option : planche statique sans charge']]}:{name:'Kettlebell initiation',minutes:15,met:5.8,reps:30,moves:[['8','Deadlifts','Charge près du corps, dos neutre'],['6/bras','Rowings assistés','Main libre sur un support stable'],['10','Goblet squats','Kettlebell contre la poitrine'],['20 s','Suitcase hold','Debout, grandis-toi sans pencher']]}}
 function startKettlebell(variant){
@@ -210,7 +215,7 @@ function updateKettlebell(){if(!kettlebellSession)return;const value=kettlebellS
 function closeKettlebellWorkout(){clearInterval(kettlebellTimerId);kettlebellSession=null;syncScreenWakeLock();document.querySelector('#kettlebellPlayer').close()}
 function finishKettlebellWorkout(){
   if(!kettlebellSession)return;clearInterval(kettlebellTimerId);const {config,rounds,remaining}=kettlebellSession,elapsed=Math.max(1,Math.round((config.minutes*60-remaining)/60)),calories=Math.round(config.met*3.5*state.weight/200*elapsed),reps=rounds*config.reps;
-  state.history.push({id:Date.now(),date:dateKey(),title:config.name,minutes:elapsed,calories,rounds,reps});completeDailyWorkout();saveState();kettlebellSession=null;syncScreenWakeLock();document.querySelector('#kettlebellPlayer').close();render();finishMinutes.textContent=elapsed;finishCalories.textContent=calories;finishExercises.textContent=rounds;finishMetricLabel.textContent='TOURS';navigateTo('today');finishScreen.showModal();
+  state.history.push({id:Date.now(),date:dateKey(),title:config.name,minutes:elapsed,calories,rounds,reps});completeDailyWorkout();saveState();kettlebellSession=null;syncScreenWakeLock();document.querySelector('#kettlebellPlayer').close();render();finishMinutes.textContent=elapsed;finishCalories.textContent=calories;finishExercises.textContent=rounds;finishMetricLabel.textContent='TOURS';navigateTo('today');finishScreen.showModal();animateFinishedWorkout();
 }
 function scheduleReminder(){
   clearTimeout(reminderId);if(!('Notification' in window)||Notification.permission!=='granted')return;
@@ -232,7 +237,7 @@ function navigateTo(target,updateHash=true){
 }
 function openChallenge(id,updateHash=true){
  if(!QUESTS.some(q=>q.id===id)){navigateTo('today',updateHash);return}
- activeQuest=id;settleDays();renderChallenge();navigateTo('challenge',updateHash);
+ activeQuest=id;settleDays();if(id==='nutrition')document.querySelector('#nutritionExcessInput').value=state.rpg.days[dateKey()].nutrition?.excessCalories??'';if(id==='bedtime'){document.querySelector('#sleepWake').value=sleepTarget().wake;document.querySelector('#sleepHours').value=sleepTarget().hours}renderChallenge();navigateTo('challenge',updateHash);
 }
 function routeFromHash(){
  const route=window.location?.hash?.slice(1)||'today';
@@ -275,7 +280,7 @@ document.querySelector('#kettlebellSound').addEventListener('click',()=>{prepare
 document.querySelector('#settingsButton').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());
 document.querySelector('#openPreferences').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());
 document.querySelector('#openReminder').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());
-document.querySelector('#closeFinish').addEventListener('click',()=>{document.querySelector('#finishScreen').close();navigateTo('today')});
+document.querySelector('#closeFinish').addEventListener('click',()=>{stopXpAnimation();document.querySelector('#finishScreen').close();render();navigateTo('today')});
 document.querySelector('#enableNotifications').addEventListener('click',async()=>{if(!('Notification'in window)){notificationStatus.textContent='Non disponible dans ce navigateur';return}const result=await Notification.requestPermission();notificationStatus.textContent=result==='granted'?'Rappel actif lorsque l’app est ouverte':'Notifications refusées';if(result==='granted')scheduleReminder()});
 document.querySelector('#saveSettings').addEventListener('click',()=>{state.name=nameInput.value.trim()||'soldat';state.duration=Number(durationSelect.value);state.level=Number(levelSelect.value);state.weight=Math.min(250,Math.max(35,Number(weightInput.value)||70));state.reminder=reminderTime.value;saveState();scheduleReminder();render();toast('Réglages enregistrés')});
 window.addEventListener('keydown',e=>{if(e.code==='Space'&&session){e.preventDefault();session.running=!session.running;updatePlayer()}});
@@ -300,8 +305,74 @@ document.addEventListener('visibilitychange',()=>{syncScreenWakeLock();if(!docum
 for(const [id,close] of [['#cindyPlayer',closeCindyWorkout],['#kettlebellPlayer',closeKettlebellWorkout]])document.querySelector(id).addEventListener('cancel',event=>{event.preventDefault();close()});
 
 // RPG progression is separate from the exercise difficulty preference.
-function xpThreshold(level){return 100*(level-1)+20*(level-1)*(level-1)}
+function xpThreshold(level){return 500*(level-1)+50*(level-1)*(level-1)}
 function heroLevel(xp=state.rpg.xp){let level=1;while(level<99&&xp>=xpThreshold(level+1))level++;return level}
+function xpAnimationSegments(from,to){
+ const max=xpThreshold(99);from=Math.min(max,Math.max(0,from));to=Math.min(max,Math.max(from,to));
+ const segments=[];let cursor=from;
+ while(cursor<to){
+  const level=heroLevel(cursor),end=Math.min(to,xpThreshold(level+1));
+  segments.push({from:cursor,to:end,level,levelUp:end===xpThreshold(level+1)});cursor=end;
+ }
+ return segments;
+}
+function stopXpAnimation(){
+ if(xpAnimation){
+  if(xpAnimation.frame!=null)window.cancelAnimationFrame?.(xpAnimation.frame);
+  if(xpAnimation.wait!=null)clearTimeout(xpAnimation.wait);
+ }
+ xpAnimation=null;pendingXpReward=null;
+ for(const prefix of ['quest','finish'])document.querySelector(`#${prefix}XpAnimation`).classList.remove('is-filling','is-leveling');
+}
+function animateXpReward(prefix,from,to){
+ stopXpAnimation();
+ const root=document.querySelector(`#${prefix}XpAnimation`),bar=document.querySelector(`#${prefix}AnimatedXp`),label=document.querySelector(`#${prefix}AnimatedXpLabel`),levelLabel=document.querySelector(`#${prefix}AnimatedLevel`),banner=document.querySelector(`#${prefix}LevelCelebration`);
+ root.hidden=false;banner.hidden=true;
+ const segments=xpAnimationSegments(from,to);
+ const paint=(xp,level=heroLevel(xp))=>{
+  const floor=xpThreshold(level),span=xpThreshold(Math.min(99,level+1))-floor;
+  const progress=level===99?100:Math.min(100,(xp-floor)/span*100);
+  bar.value=progress;label.textContent=level===99?'Niveau maximum atteint':`${Math.round(xp-floor)} / ${span} XP`;
+  levelLabel.textContent=`LVL ${String(level).padStart(2,'0')}`;
+  document.querySelector('#heroLevel').textContent=String(level).padStart(2,'0');
+  document.querySelector('#heroXp').value=progress;document.querySelector('#xpLabel').textContent=label.textContent;
+ };
+ const celebrate=level=>{
+  banner.hidden=false;banner.textContent=`✦ NIVEAU SUPÉRIEUR · LVL ${level} ✦`;
+  root.classList.remove('is-leveling');void root.offsetWidth;root.classList.add('is-leveling');
+ };
+ // Reduced motion keeps the final result and level announcement, without effects.
+ if(!segments.length||!window.requestAnimationFrame||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
+  paint(to);if(heroLevel(to)>heroLevel(from))celebrate(heroLevel(to));return;
+ }
+ const animation={displayed:from,frame:null,wait:null};xpAnimation=animation;
+ root.classList.add('is-filling');paint(from);
+ const runSegment=index=>{
+  if(xpAnimation!==animation)return;
+  if(index>=segments.length){paint(to);xpAnimation=null;root.classList.remove('is-filling');return}
+  const segment=segments[index];let started;
+  const frame=time=>{
+   if(xpAnimation!==animation)return;
+   if(started===undefined)started=time;
+   const elapsed=Math.min(1,(time-started)/1100),eased=1-Math.pow(1-elapsed,3);
+   animation.displayed=segment.from+(segment.to-segment.from)*eased;paint(animation.displayed,segment.level);
+   if(elapsed<1){animation.frame=window.requestAnimationFrame(frame);return}
+   if(segment.levelUp){
+    celebrate(segment.level+1);
+    animation.wait=setTimeout(()=>{
+     if(xpAnimation!==animation)return;
+     animation.displayed=segment.to;paint(segment.to);runSegment(index+1);
+    },650);
+   }else runSegment(index+1);
+  };
+  animation.frame=window.requestAnimationFrame(frame);
+ };
+ runSegment(0);
+}
+function animateFinishedWorkout(){
+ const reward=pendingXpReward||{from:state.rpg.xp,to:state.rpg.xp};
+ animateXpReward('finish',reward.from,reward.to);
+}
 function initRpg(){
  if(!state.rpg)state.rpg={xp:0,days:{},ledger:[]};
  settleDays();
@@ -310,7 +381,7 @@ function settleDays(){
  const today=dateKey();
  for(const [day,entry] of Object.entries(state.rpg.days)){
   if(day>=today||entry.settled)continue;
-  const missed=entry.selected.filter(id=>!entry.claims[id]).length;
+ const missed=entry.selected.filter(id=>!QUESTS.find(q=>q.id===id)?.permanent&&!entry.claims[id]).length;
   const loss=Math.min(30,missed*10,state.rpg.xp);
   state.rpg.xp-=loss;entry.settled=true;
   if(loss)state.rpg.ledger.push({day,xp:-loss,label:'Quêtes inachevées'});
@@ -322,14 +393,16 @@ function questCalories(q){return Math.round(q.met*3.5*state.weight/200*q.minutes
 function questXp(q,calories=questCalories(q)){return q.xp+Math.min(100,Math.floor(Math.max(0,calories)/5))}
 function claimQuest(id,calories,show=true){
  settleDays();const day=state.rpg.days[dateKey()],q=QUESTS.find(q=>q.id===id);
- if(!q||day.claims[id])return 0;
- const previous=heroLevel(),energy=calories===undefined?questCalories(q):calories;
+ if(!q||q.permanent||day.claims[id])return 0;
+ const beforeXp=state.rpg.xp,energy=calories===undefined?questCalories(q):calories;
  let gain=questXp(q,energy);day.claims[id]={xp:gain,calories:energy};
  if(!day.selected.includes(id))day.selected.push(id);
  state.goals[dateKey()]=Object.keys(day.claims);
  let bonus=0;
- if(!day.bonus&&day.selected.every(id=>day.claims[id])){bonus=80;gain+=bonus;day.bonus=true}
+ if(!day.bonus&&day.selected.filter(id=>!QUESTS.find(q=>q.id===id)?.permanent).every(id=>day.claims[id])){bonus=80;gain+=bonus;day.bonus=true}
  state.rpg.xp=Math.min(xpThreshold(99),state.rpg.xp+gain);
+ gain=state.rpg.xp-beforeXp;
+ pendingXpReward={from:beforeXp,to:state.rpg.xp};
  state.rpg.ledger.push({day:dateKey(),xp:gain,label:q.name});
  if(show&&q.minutes)state.history.push({id:Date.now(),date:dateKey(),title:q.detail,minutes:q.minutes,calories:energy});
  saveState();render();
@@ -338,40 +411,46 @@ function claimQuest(id,calories,show=true){
   document.querySelector('#questReward').textContent=`+${gain} XP`;
   document.querySelector('#questRewardTitle').textContent=q.name;
   document.querySelector('#questRewardDetail').textContent=`${q.xp} XP de quête + ${questXp(q,energy)-q.xp} XP d’énergie${bonus?' + 80 XP de journée réussie':''} · ≈ ${energy} kcal`;
-  document.querySelector('#questLevelUp').textContent=heroLevel()>previous?`NIVEAU SUPÉRIEUR ! LVL ${heroLevel()}`:`LVL ${heroLevel()} · Chaque petit pas te fait avancer.`;
+  document.querySelector('#questLevelUp').textContent=gain?'Ton expérience rejoint ta barre de progression.':'Niveau maximum atteint.';
   document.querySelector('#questSuccess').showModal();
+  animateXpReward('quest',beforeXp,state.rpg.xp);
  }
  return gain;
 }
 function renderRpg(){
- const day=state.rpg.days[dateKey()],level=heroLevel(),floor=xpThreshold(level),next=xpThreshold(Math.min(99,level+1));
+ const displayXp=xpAnimation?.displayed??state.rpg.xp;
+ const day=state.rpg.days[dateKey()],level=heroLevel(displayXp),floor=xpThreshold(level),next=xpThreshold(Math.min(99,level+1));
  document.querySelector('#heroLevel').textContent=String(level).padStart(2,'0');
  document.querySelector('#heroRank').textContent=level>=99?'Légende de lumière':level>=50?'Gardien des sommets':level>=20?'Aventurier accompli':'Apprenti des aurores';
- document.querySelector('#xpLabel').textContent=level===99?'Niveau maximum atteint':`${state.rpg.xp-floor} / ${next-floor} XP`;
- document.querySelector('#heroXp').value=level===99?100:(state.rpg.xp-floor)/(next-floor)*100;
+ document.querySelector('#xpLabel').textContent=level===99?'Niveau maximum atteint':`${Math.floor(displayXp)-floor} / ${next-floor} XP`;
+ document.querySelector('#heroXp').value=level===99?100:(displayXp-floor)/(next-floor)*100;
  document.querySelector('#dayReward').textContent=day.bonus?'✦ Bonus de journée obtenu : +80 XP':'✦ Termine tes quêtes choisies : +80 XP';
  document.querySelector('#goalScore').textContent=`${day.selected.filter(id=>day.claims[id]).length}/${day.selected.length}`;
  const questRow=(q)=>{
   const done=!!day.claims[q.id];
-  return `<button class="daily-challenge ${done?'completed':''}" data-open-quest="${q.id}" aria-label="${q.name}${done?' : terminé':''}"><span class="challenge-checkbox" aria-hidden="true">${done?'✓':''}</span><span class="daily-icon" aria-hidden="true">${q.icon}</span><span class="daily-text"><strong>${q.name}</strong><small>${q.detail}</small></span><span class="daily-xp">${done?'ACCOMPLI':`+${questXp(q)} XP`}</span><span class="row-arrow" aria-hidden="true">›</span></button>`;
+  const sleep=q.id==='bedtime'?day.bedtime:null;
+  const food=q.id==='nutrition'?day.nutrition:null;
+  const reward=done?'ACCOMPLI':food?'EXCÈS DÉCLARÉ':q.id==='nutrition'?'À RENSEIGNER':sleep?(sleep.late?'APRÈS MINUIT':'RENSEIGNÉ'):`+${questXp(q)} XP`;
+  return `<button class="daily-challenge ${done?'completed':''}" data-open-quest="${q.id}" aria-label="${q.name}${done?' : terminé':''}"><span class="challenge-checkbox" aria-hidden="true">${done?'✓':''}</span><span class="daily-icon" aria-hidden="true">${q.icon}</span><span class="daily-text"><strong>${q.name}</strong><small>${q.detail}</small></span><span class="daily-xp">${reward}</span><span class="row-arrow" aria-hidden="true">›</span></button>`;
  };
- document.querySelector('#goalList').innerHTML=QUESTS.filter(q=>day.selected.includes(q.id)).map(questRow).join('');
+ document.querySelector('#goalList').innerHTML=QUESTS.filter(q=>q.permanent||day.selected.includes(q.id)).map(questRow).join('');
  document.querySelector('#activityCategories').innerHTML=QUESTS.map(questRow).join('');
  if(activeQuest)renderChallenge();
- document.querySelector('#questChoices').innerHTML=QUESTS.map(q=>`<label><input type="checkbox" data-select-quest="${q.id}" ${day.selected.includes(q.id)?'checked':''} ${Object.keys(day.claims).length?'disabled':''}> ${q.detail}</label>`).join('');
+ document.querySelector('#questChoices').innerHTML=QUESTS.map(q=>`<label><input type="checkbox" data-select-quest="${q.id}" ${q.permanent||day.selected.includes(q.id)?'checked':''} ${q.permanent||day.selected.some(id=>day.claims[id])?'disabled':''}> ${q.detail}</label>`).join('');
  document.querySelector('#xpLedger').innerHTML=state.rpg.ledger.slice(-10).reverse().map(e=>`<div class="history-item"><span>${e.day} · ${escapeHtml(e.label)}</span><strong>${e.xp>0?'+':''}${e.xp} XP</strong></div>`).join('')||'<p>Ton aventure commence aujourd’hui.</p>';
 }
 document.querySelector('#questChoices').addEventListener('change',event=>{
  const id=event.target.dataset.selectQuest;if(!id)return;
- settleDays();const day=state.rpg.days[dateKey()];if(Object.keys(day.claims).length)return;
+ if(QUESTS.find(q=>q.id===id)?.permanent)return;
+ settleDays();const day=state.rpg.days[dateKey()];if(day.selected.some(id=>day.claims[id]))return;
  const chosen=new Set(day.selected);event.target.checked?chosen.add(id):chosen.delete(id);
  if(!chosen.size){renderRpg();toast('Choisis au moins une quête.');return}
  day.selected=[...chosen];saveState();renderRpg();
 });
-function returnFromVictory(){document.querySelector('#questSuccess').close();render();navigateTo('today')}
+function returnFromVictory(){stopXpAnimation();document.querySelector('#questSuccess').close();render();navigateTo('today')}
 document.querySelector('#closeQuestSuccess').addEventListener('click',returnFromVictory);
 document.querySelector('#questSuccess').addEventListener('cancel',event=>{event.preventDefault();returnFromVictory()});
-document.querySelector('#finishScreen').addEventListener('cancel',event=>{event.preventDefault();document.querySelector('#finishScreen').close();navigateTo('today')});
+document.querySelector('#finishScreen').addEventListener('cancel',event=>{event.preventDefault();stopXpAnimation();document.querySelector('#finishScreen').close();render();navigateTo('today')});
 setInterval(()=>{if(!session&&!cindySession&&!kettlebellSession)render()},60000);
 
 function renderChallenge(){
@@ -383,23 +462,134 @@ function renderChallenge(){
   walk:{description:'Pars explorer les alentours à pied. Accorde-toi vingt minutes de marche active.',instructions:['Choisis un parcours qui te convient.','Marche pendant 20 minutes à une allure adaptée à tes capacités.','De retour, valide ton exploration ci-dessous. Tes pas sont consultables dans leur écran dédié.']},
   run:{description:'Une sortie de quinze minutes pour prendre l’air et faire avancer ton aventure.',instructions:['Prépare ton parcours et démarre progressivement.','Cours pendant 15 minutes à une allure confortable, en alternant avec la marche si besoin.','Une fois ta sortie terminée, reviens la valider ici.']},
   bike:{description:'Traverse la vallée à vélo avec une sortie de trente minutes.',instructions:['Prépare ton vélo et choisis un itinéraire adapté.','Roule pendant 30 minutes selon tes capacités.','À la fin de ta sortie, valide ton défi pour recevoir ton XP.']},
+  shadowboxing:{description:'Quinze minutes de boxe dans le vide, sans partenaire ni matériel. Travaille tes déplacements, ta garde et tes enchaînements à ton rythme.',instructions:['Libère de l’espace autour de toi et commence par 2 minutes de mobilisation douce.','Effectue 3 rounds de 3 minutes : déplacements, directs et esquives, sans contact. Garde des mouvements contrôlés et adapte ton rythme.','Prends 1 minute de récupération entre les rounds, puis termine par 2 minutes de retour au calme : 15 minutes au total.','Une fois la séance terminée, valide ce défi pour recevoir ton XP. Les calories restent une estimation pour une intensité modérée, repos inclus.']},
+  bedtime:{description:'Prépare une nuit reposante avec des heures de coucher et de réveil régulières. Ce défi reste disponible chaque jour.',instructions:['L’OMS conseille des horaires réguliers, sans fixer une heure universelle de coucher pour les adultes.','Repère adulte complémentaire : les NIH indiquent généralement 7 à 9 heures de sommeil. Le conseil ci-dessous réserve une durée choisie avant ton réveil ; ce n’est pas une mesure du sommeil réel.','Renseigne ton coucher réel pour le soir concerné, y compris le lendemain matin. Une seule déclaration est possible par nuit.','Le jeu accorde 40 XP si tu respectes l’heure conseillée, sans calories. Un coucher plus tardif mais au plus tard à minuit ne retire aucun XP. Seul un coucher déclaré après minuit retire 10 XP. Sans déclaration : aucune pénalité.']},
+  nutrition:{description:'Un repère simple pour ta journée : déclare un excès estimé sans détailler tes repas. La qualité de ton alimentation ne se résume pas aux calories.',instructions:['Saisis uniquement le total des calories supplémentaires que tu estimes avoir prises aujourd’hui, pas toutes les calories consommées. L’application ne détermine pas tes besoins alimentaires.','Un excès déclaré entraîne un malus fixe de 10 XP pour la journée, sans augmenter avec la quantité. Sans déclaration, aucune pénalité.','Si tu souhaites confirmer une journée sans excès, saisis 0. Aucune récompense supplémentaire n’est accordée.','Tu peux corriger le total du jour : il remplace ta saisie précédente. Les calories d’activité restent affichées séparément et ne compensent pas ce malus.']},
   water:{description:'Prends soin de ton hydratation tout au long de la journée, selon tes besoins et ton objectif personnel.',instructions:['Définis une cible d’hydratation adaptée à tes besoins.','Répartis tes boissons au fil de la journée.','Valide seulement lorsque ton objectif personnel est atteint.']}
  }[q.id];
  document.querySelector('#challengeIcon').textContent=q.icon;
  document.querySelector('#challengeTitle').textContent=q.name;
  document.querySelector('#challengeDescription').textContent=details.description;
  document.querySelector('#challengeStatus').textContent=done?'DÉFI ACCOMPLI':'TA PROCHAINE MISSION';
- document.querySelector('#challengeTarget').textContent=q.id==='water'?'Cible personnelle':q.id==='workout'?`${state.duration} min`:`${q.minutes} min`;
+ document.querySelector('#challengeTarget').textContent=q.id==='nutrition'?'Déclaration du jour':q.id==='bedtime'?sleepTarget().label:q.id==='water'?'Cible personnelle':q.id==='workout'?`${state.duration} min`:`${q.minutes} min`;
  const calories=q.id==='workout'?estimatedCalories():questCalories(q);
- document.querySelector('#challengeXp').textContent=`+${questXp(q,calories)} XP`;
- document.querySelector('#challengeCalories').textContent=`≈ ${calories} kcal`;
+ document.querySelector('#challengeXp').textContent=q.id==='nutrition'?'Malus max. 10 XP':`+${questXp(q,calories)} XP`;
+ document.querySelector('#challengeCalories').textContent=q.id==='nutrition'?'Voir les compteurs':`≈ ${calories} kcal`;
  document.querySelector('#challengeInstructions').innerHTML=details.instructions.map(text=>`<li>${text}</li>`).join('');
  document.querySelector('#workoutChallenge').hidden=q.id!=='workout'||done;
  document.querySelector('#kettlebellChallenge').hidden=q.id!=='kettlebell'||done;
  const guided=['workout','kettlebell'].includes(q.id);
- document.querySelector('#outdoorChallenge').hidden=guided||done;
+ document.querySelector('#outdoorChallenge').hidden=guided||done||!!q.permanent;
+ document.querySelector('#bedtimeChallenge').hidden=q.id!=='bedtime';
+ document.querySelector('#nutritionChallenge').hidden=q.id!=='nutrition';
+ if(q.id==='bedtime')renderBedtime();
+ if(q.id==='nutrition')renderNutrition();
  document.querySelector('#challengeActionDescription').textContent=q.id==='water'?'Atteins ton objectif d’hydratation sur la journée, puis confirme ici.':`Réalise cette activité pendant ${q.minutes} minutes, puis confirme sa réalisation.`;
- document.querySelector('#completeChallenge').hidden=guided||done;
+ document.querySelector('#completeChallenge').hidden=guided||done||!!q.permanent;
  document.querySelector('#completeChallenge').disabled=done;
- document.querySelector('#challengeCompleteMessage').textContent=done?'✓ Récompense obtenue. Ce défi est coché sur ton accueil.':'';
+ document.querySelector('#challengeCompleteMessage').textContent=done?(q.id==='nutrition'?'✓ Journée déclarée sans excès. Ce défi est coché sur ton accueil.':'✓ Récompense obtenue. Ce défi est coché sur ton accueil.'):'';
 }
+
+function sleepTarget(){
+ const settings=state.sleepSettings||{wake:'07:00',hours:8};
+ const [hour,minute]=settings.wake.split(':').map(Number);
+ const minutes=((hour*60+minute-settings.hours*60)%1440+1440)%1440;
+ return {minutes,label:`${String(Math.floor(minutes/60)).padStart(2,'0')}:${String(minutes%60).padStart(2,'0')}`,wake:settings.wake,hours:settings.hours};
+}
+function sleepDates(now=new Date()){
+ const previous=new Date(now);previous.setDate(previous.getDate()-1);
+ return {today:dateKey(now),yesterday:dateKey(previous)};
+}
+function saveSleepSettings(wake,hours){
+ if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(wake)||![7,8,9].includes(Number(hours)))throw Error('Indique une heure de réveil et une durée de 7, 8 ou 9 heures.');
+ state.sleepSettings={wake,hours:Number(hours)};saveState();renderChallenge();
+}
+function evaluateBedtime(night,actual,now=new Date()){
+ const {today,yesterday}=sleepDates(now);
+ if(![today,yesterday].includes(night))throw Error('Choisis le soir d’aujourd’hui ou d’hier.');
+ if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(actual))throw Error('Renseigne la date et l’heure réelles du coucher.');
+ const at=new Date(actual),start=new Date(`${night}T12:00`),end=new Date(start);
+ end.setDate(end.getDate()+1);
+ if(!Number.isFinite(at.getTime())||at>now||at<start||at>=end)throw Error('Le coucher doit être passé et correspondre au soir choisi ou au lendemain matin (avant midi).');
+ const midnight=new Date(`${night}T00:00`);midnight.setDate(midnight.getDate()+1);
+ const target=sleepTarget(),deadline=new Date(`${night}T${target.label}`);
+ if(target.minutes<720)deadline.setDate(deadline.getDate()+1);
+ return {late:at>midnight,success:at<=midnight&&at<=deadline,target:target.label};
+}
+function recordBedtime(night,actual,now=new Date()){
+ const result=evaluateBedtime(night,actual,now);settleDays();
+ const day=state.rpg.days[night]||(state.rpg.days[night]={selected:[],claims:{},bonus:false,settled:true});
+ if(day.bedtime)throw Error('Ce coucher a déjà été enregistré pour cette nuit.');
+ const before=state.rpg.xp;
+ const change=result.late?-Math.min(10,before):result.success?Math.min(40,xpThreshold(99)-before):0;
+ day.bedtime={actual,...result,xp:change};
+ if(result.success)day.claims.bedtime={xp:change,calories:0};
+ state.rpg.xp+=change;
+ state.rpg.ledger.push({day:night,xp:change,label:result.late?'Coucher après minuit':result.success?'Se coucher tôt':'Coucher avant minuit · sans pénalité'});
+ saveState();render();navigateTo('today');
+ if(change>0)showActivityReward('Se coucher tôt',change,`Coucher du ${night} enregistré · heure conseillée respectée · aucune calorie ajoutée.`,before);
+ else toast(result.late?`Coucher après minuit : ${change} XP.`:'Coucher enregistré : aucune perte d’XP.');
+ return change;
+}
+function renderBedtime(){
+ const target=sleepTarget(),dates=sleepDates();
+ document.querySelector('#sleepAdvice').textContent=`Pour un réveil à ${target.wake} et ${target.hours} h réservées au sommeil : coucher conseillé vers ${target.label}. Adapte ce repère à tes besoins ; le temps au lit n’est pas la durée réellement dormie.`;
+ const night=document.querySelector('#sleepNight');night.min=dates.yesterday;night.max=dates.today;
+ if(![dates.today,dates.yesterday].includes(night.value))night.value=new Date().getHours()<12?dates.yesterday:dates.today;
+ const wake=document.querySelector('#sleepWake'),hours=document.querySelector('#sleepHours');
+ if(!wake.value)wake.value=target.wake;if(!hours.value)hours.value=target.hours;
+ const record=state.rpg.days[night.value]?.bedtime;
+ document.querySelector('#saveBedtime').disabled=!!record;
+ document.querySelector('#bedtimeResult').textContent=record?`Coucher déclaré : ${record.actual.replace('T',' à ')} · ${record.xp>0?'+':''}${record.xp} XP. Une seule déclaration par nuit.`:'Aucun coucher déclaré pour cette nuit. Sans saisie, aucun XP ne sera retiré.';
+}
+document.querySelector('#sleepSettingsForm').addEventListener('submit',event=>{
+ event.preventDefault();try{saveSleepSettings(document.querySelector('#sleepWake').value,document.querySelector('#sleepHours').value);document.querySelector('#bedtimeError').textContent=''}catch(error){document.querySelector('#bedtimeError').textContent=error.message}
+});
+document.querySelector('#bedtimeForm').addEventListener('submit',event=>{
+ event.preventDefault();try{recordBedtime(document.querySelector('#sleepNight').value,document.querySelector('#sleepActual').value);document.querySelector('#bedtimeError').textContent=''}catch(error){document.querySelector('#bedtimeError').textContent=error.message}
+});
+document.querySelector('#sleepNight').addEventListener('change',renderBedtime);
+
+function nutritionCalories(value){
+ if(value===null||value===undefined||String(value).trim()==='')throw Error('Indique un total, ou 0 pour confirmer l’absence d’excès.');
+ const calories=Number(value);
+ if(!Number.isSafeInteger(calories)||calories<0||calories>10000)throw Error('Saisis un total entier entre 0 et 10 000 kcal.');
+ return calories;
+}
+function activityEnergyToday(){
+ return state.history.filter(h=>h.date===dateKey()).reduce((total,h)=>{
+  const calories=h.calories??estimatedCalories(PROGRAM.find(p=>p.title===h.title)||PROGRAM[0],h.minutes);
+  return total+(Number.isFinite(calories)?Math.max(0,calories):0);
+ },0);
+}
+function recordNutrition(value){
+ const excess=nutritionCalories(value);settleDays();
+ const day=state.rpg.days[dateKey()],previous=day.nutrition;
+ if(previous?.excessCalories===excess)return 0;
+ const wasExcess=(previous?.excessCalories||0)>0,before=state.rpg.xp;
+ let deducted=previous?.deducted||0;
+ if(excess>0&&!wasExcess){deducted=Math.min(10,before);state.rpg.xp-=deducted}
+ if(excess===0&&wasExcess){state.rpg.xp=Math.min(xpThreshold(99),state.rpg.xp+deducted);deducted=0}
+ day.nutrition={excessCalories:excess,deducted,updatedAt:new Date().toISOString()};
+ if(excess===0)day.claims.nutrition={xp:0,calories:0};else delete day.claims.nutrition;
+ const change=state.rpg.xp-before;
+ state.rpg.ledger.push({day:dateKey(),xp:change,label:excess>0?'Excès alimentaire déclaré':wasExcess?'Correction de la déclaration alimentaire':'Bien manger · journée déclarée sans excès'});
+ saveState();render();navigateTo('today');
+ return change;
+}
+function renderNutrition(){
+ const record=state.rpg.days[dateKey()]?.nutrition;
+ document.querySelector('#nutritionExcessCount').textContent=record?record.excessCalories.toLocaleString('fr-FR'):'—';
+ document.querySelector('#nutritionActivityCount').textContent=Math.round(activityEnergyToday()).toLocaleString('fr-FR');
+ document.querySelector('#nutritionPenaltyCount').textContent=record?`${record.deducted?'-'+record.deducted:'0'} XP`:'0 XP';
+ document.querySelector('#nutritionResult').textContent=record?`Total déclaré pour aujourd’hui : ${record.excessCalories} kcal supplémentaires. ${record.excessCalories>0?'Malus du jour déjà traité ; changer le montant positif ne le cumule pas.':'Journée confirmée sans excès, aucun bonus d’XP.'}`:'Aucune déclaration aujourd’hui. Aucun malus automatique.';
+ document.querySelector('#nutritionHistory').innerHTML=Object.entries(state.rpg.days).filter(([,day])=>day.nutrition).sort(([a],[b])=>b.localeCompare(a)).slice(0,7).map(([date,day])=>`<div class="step-history"><span>${date}</span><strong>${day.nutrition.excessCalories} kcal déclarées</strong><small>Malus appliqué : ${day.nutrition.deducted} XP</small></div>`).join('')||'<p>Aucune déclaration enregistrée.</p>';
+}
+document.querySelector('#nutritionForm').addEventListener('submit',event=>{
+ event.preventDefault();
+ try{
+  const change=recordNutrition(document.querySelector('#nutritionExcessInput').value);
+  document.querySelector('#nutritionError').textContent='';
+  toast(change<0?`Déclaration enregistrée : ${change} XP.`:change>0?'Déclaration corrigée : le malus effectivement retiré a été rendu.':'Déclaration enregistrée, aucun malus supplémentaire.');
+ }catch(error){document.querySelector('#nutritionError').textContent=error.message}
+});

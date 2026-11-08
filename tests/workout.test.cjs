@@ -247,3 +247,166 @@ test('category screens have unique IDs and keep steps, manual forms and dojo off
  for(const id of ['manualActivityForm','stepCount','startWorkout','startKettlebellClassic'])assert.ok(!home.includes(`id="${id}"`),id);
  for(const view of ['today','activities','challenge','steps','manual','plan','progress','menu'])assert.ok(html.includes(`data-view="${view}"`),view);
 });
+
+test('slower XP curve takes several normal days per level and increases each level cost',()=>{
+ assert.equal(run('xpThreshold(2)'),550);
+ assert.equal(run('heroLevel(3*180)'),1);assert.equal(run('heroLevel(4*180)'),2);
+ assert.equal(run('xpThreshold(20)'),27550);
+ let previous=0;
+ for(let level=2;level<=99;level++){
+  const cost=run(`xpThreshold(${level})-xpThreshold(${level-1})`);assert.ok(cost>previous);previous=cost;
+ }
+ const before=run('state.rpg.xp');run('heroLevel()');assert.equal(run('state.rpg.xp'),before);
+});
+test('XP animation splits exactly at level thresholds and clamps the maximum',()=>{
+ const segments=JSON.parse(run('JSON.stringify(xpAnimationSegments(500,1250))'));
+ assert.deepEqual(segments,[{from:500,to:550,level:1,levelUp:true},{from:550,to:1200,level:2,levelUp:true},{from:1200,to:1250,level:3,levelUp:false}]);
+ assert.equal(run('xpAnimationSegments(xpThreshold(99),xpThreshold(99)+1000).length'),0);
+ assert.equal(run('xpAnimationSegments(0,0).length'),0);
+});
+test('animated XP fills before celebrating a level, continues after it, and never changes saved XP',()=>{
+ const saved=run('JSON.stringify(state)'),originalTimeout=context.setTimeout,originalClear=context.clearTimeout;
+ const frames=new Map(),timers=new Map();let next=1;
+ context.window.requestAnimationFrame=cb=>{const id=next++;frames.set(id,cb);return id};
+ context.window.cancelAnimationFrame=id=>frames.delete(id);
+ context.setTimeout=cb=>{const id=next++;timers.set(id,cb);return id};context.clearTimeout=id=>timers.delete(id);
+ const frame=time=>{const [id,cb]=frames.entries().next().value;frames.delete(id);cb(time)};
+ try{
+  run('state.rpg.xp=610;saveState();animateXpReward("quest",500,610)');
+  assert.equal(element('#questAnimatedLevel').textContent,'LVL 01');
+  frame(0);frame(550);assert.ok(element('#questAnimatedXp').value>500/550*100);assert.ok(element('#questAnimatedXp').value<100);
+  frame(1100);assert.equal(element('#questAnimatedXp').value,100);
+  assert.equal(element('#questLevelCelebration').hidden,false);assert.ok(element('#questLevelCelebration').textContent.includes('LVL 2'));
+  const [timerId,cb]=timers.entries().next().value;timers.delete(timerId);cb();
+  assert.equal(element('#questAnimatedLevel').textContent,'LVL 02');
+  frame(2000);frame(3100);
+  assert.equal(element('#questAnimatedXpLabel').textContent,'60 / 650 XP');
+  assert.equal(run('xpAnimation'),null);assert.equal(run('loadState().rpg.xp'),610);
+ }finally{
+  run('stopXpAnimation()');delete context.window.requestAnimationFrame;delete context.window.cancelAnimationFrame;
+  context.setTimeout=originalTimeout;context.clearTimeout=originalClear;
+  run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`);
+ }
+});
+test('reduced motion displays the level result immediately and closing cancels pending frames',()=>{
+ const saved=run('JSON.stringify(state)');const frames=new Map();let next=1;
+ context.window.requestAnimationFrame=cb=>{const id=next++;frames.set(id,cb);return id};
+ context.window.cancelAnimationFrame=id=>frames.delete(id);
+ context.window.matchMedia=()=>({matches:true});
+ try{
+  run('state.rpg.xp=600;animateXpReward("finish",500,600)');assert.equal(frames.size,0);
+  assert.equal(element('#finishAnimatedLevel').textContent,'LVL 02');assert.equal(element('#finishLevelCelebration').hidden,false);
+  context.window.matchMedia=()=>({matches:false});
+  run('animateXpReward("quest",500,600)');assert.equal(frames.size,1);
+  run('returnFromVictory()');assert.equal(frames.size,0);assert.equal(run('xpAnimation'),null);
+  assert.equal(element('#heroLevel').textContent,'02');
+ }finally{
+  run('stopXpAnimation()');delete context.window.requestAnimationFrame;delete context.window.cancelAnimationFrame;delete context.window.matchMedia;
+  run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`);
+ }
+});
+
+test('bedtime is permanent, has no calorie reward, and cannot bypass its declaration form',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('render();openChallenge("bedtime")');
+  assert.ok(element('#goalList').innerHTML.includes('data-open-quest="bedtime"'));
+  assert.equal(element('#bedtimeChallenge').hidden,false);assert.equal(element('#completeChallenge').hidden,true);
+  assert.equal(run('questCalories(QUESTS.find(q=>q.id==="bedtime"))'),0);
+  assert.equal(run('claimQuest("bedtime")'),0);
+  run('saveSleepSettings("07:00",8)');assert.equal(run('sleepTarget().label'),'23:00');
+  assert.throws(()=>run('saveSleepSettings("25:00",8)'));assert.throws(()=>run('saveSleepSettings("07:00",3)'));
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));delete state.sleepSettings;saveState();render()`)}
+});
+test('bedtime rules distinguish the advised target, midnight exactly, and after midnight',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.sleepSettings={wake:"07:00",hours:8}');
+  for(const [actual,success,late] of [
+   ['2026-11-07T22:59',true,false],['2026-11-07T23:00',true,false],['2026-11-07T23:59',false,false],
+   ['2026-11-08T00:00',false,false],['2026-11-08T00:01',false,true]
+  ]){
+   const result=run(`evaluateBedtime("2026-11-07",${JSON.stringify(actual)},new Date("2026-11-08T10:00"))`);
+   assert.equal(result.success,success,actual);assert.equal(result.late,late,actual);
+  }
+  assert.throws(()=>run('evaluateBedtime("2026-11-07","2026-11-08T11:00",new Date("2026-11-08T10:00"))'));
+  assert.throws(()=>run('evaluateBedtime("2026-11-06","2026-11-07T01:00",new Date("2026-11-08T10:00"))'));
+ }finally{run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));delete state.sleepSettings;saveState()`)}
+});
+test('an undeclared bedtime never loses XP during daily settlement',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:100,days:{"2020-01-01":{selected:["bedtime"],claims:{},bonus:false,settled:false}},ledger:[]};settleDays();settleDays()');
+  assert.equal(run('state.rpg.xp'),100);assert.equal(run('state.rpg.ledger.length'),0);
+ }finally{run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+test('late bedtime is charged once for the correct night and cannot make XP negative',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:5,days:{},ledger:[]};state.sleepSettings={wake:"07:00",hours:8};settleDays()');
+  const result=run('(()=>{const now=new Date();now.setHours(11,0,0,0);return recordBedtime(sleepDates(now).yesterday,dateKey(now)+"T00:01",now)})()');
+  assert.equal(result,-5);assert.equal(run('state.rpg.xp'),0);
+  assert.equal(run('state.rpg.days[sleepDates().yesterday].bedtime.late'),true);
+  assert.throws(()=>run('(()=>{const now=new Date();now.setHours(11,0,0,0);recordBedtime(sleepDates(now).yesterday,dateKey(now)+"T00:01",now)})()'));
+  run('settleDays()');assert.equal(run('state.rpg.xp'),0);
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));delete state.sleepSettings;saveState();render()`)}
+});
+test('on-time bedtime awards forty XP once, with no impact on the ordinary daily bonus',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:0,days:{},ledger:[]};state.sleepSettings={wake:"07:00",hours:8};settleDays()');
+  const result=run('(()=>{const now=new Date();now.setHours(11,0,0,0);const night=sleepDates(now).yesterday;return recordBedtime(night,night+"T23:00",now)})()');
+  assert.equal(result,40);assert.equal(run('state.rpg.xp'),40);
+  assert.equal(run('state.rpg.days[sleepDates().yesterday].claims.bedtime.calories'),0);
+  assert.equal(run('state.rpg.days[dateKey()].bonus'),false);
+  assert.ok(!run('state.rpg.days[dateKey()].selected.includes("bedtime")'));
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));delete state.sleepSettings;saveState();render()`)}
+});
+
+test('nutrition is a permanent declaration screen with no direct XP reward or generic completion',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('openChallenge("nutrition")');
+  assert.ok(element('#goalList').innerHTML.includes('data-open-quest="nutrition"'));
+  assert.equal(element('#nutritionChallenge').hidden,false);assert.equal(element('#completeChallenge').hidden,true);
+  assert.equal(run('claimQuest("nutrition")'),0);assert.equal(run('questXp(QUESTS.find(q=>q.id==="nutrition"))'),0);
+  for(const value of ['',null,-1,1.2,10001,'NaN'])assert.throws(()=>run(`nutritionCalories(${JSON.stringify(value)})`));
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+test('nutrition penalty is fixed and idempotent, independent of the reported amount or activity energy',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:100,days:{},ledger:[]};state.history=[{date:dateKey(),minutes:60,calories:1500,title:"Activity"}];settleDays()');
+  assert.equal(run('recordNutrition(250)'),-10);assert.equal(run('state.rpg.xp'),90);
+  assert.equal(run('recordNutrition(250)'),0);assert.equal(run('recordNutrition(900)'),0);
+  assert.equal(run('activityEnergyToday()'),1500);assert.equal(run('state.rpg.days[dateKey()].nutrition.excessCalories'),900);
+  assert.equal(run('state.rpg.xp'),90);assert.equal(run('loadState().rpg.days[dateKey()].nutrition.deducted'),10);
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+test('nutrition corrections restore only the XP deducted and cannot generate rewards',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:5,days:{},ledger:[]};settleDays()');
+  assert.equal(run('recordNutrition(100)'),-5);assert.equal(run('state.rpg.xp'),0);
+  assert.equal(run('recordNutrition(0)'),5);assert.equal(run('recordNutrition(0)'),0);
+  assert.equal(run('state.rpg.xp'),5);assert.equal(run('state.rpg.days[dateKey()].claims.nutrition.xp'),0);
+  assert.equal(run('recordNutrition(500)'),-5);assert.equal(run('recordNutrition(0)'),5);
+  assert.equal(run('state.rpg.xp'),5);
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+test('no nutrition declaration incurs no automatic penalty or daily bonus requirement',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:100,days:{"2020-01-01":{selected:["nutrition"],claims:{},settled:false}},ledger:[]};settleDays()');
+  assert.equal(run('state.rpg.xp'),100);
+  run('claimQuest("walk",100,false);claimQuest("water",0,false)');assert.equal(run('state.rpg.days[dateKey()].bonus'),true);
+  assert.equal(run('state.rpg.xp'),285);
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+test('nutrition calorie counters exclude previous days and preserve explicitly zero activity energy',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.history=[{date:dateKey(),minutes:10,calories:0},{date:dateKey(),minutes:10,calories:100},{date:"2020-01-01",minutes:10,calories:900}];renderNutrition()');
+  assert.equal(run('activityEnergyToday()'),100);assert.equal(element('#nutritionActivityCount').textContent,'100');
+ }finally{run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
