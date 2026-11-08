@@ -1,0 +1,78 @@
+/* Black and gold: shared palette for every screen and workout player. */
+:root{color-scheme:dark;--ink:#fff8e8;--muted:#c6c0b3;--paper:#101010;--card:#1c1b18;--mint:#30291b;--green:#f1cb69;--lime:#f1cb69;--peach:#30291b;--sky:#252219;--line:#514633;--shadow:0 14px 40px #0005;--gold:#f1cb69}
+[hidden]{display:none!important}
+body{background:radial-gradient(ellipse at 85% 0,#3b2d1644,transparent 45%),#101010;color:var(--ink)}
+button,a,input,select,summary{-webkit-tap-highlight-color:#f1cb6922}
+a{color:var(--gold)}
+.topbar{background:#101010f2;border-bottom:1px solid var(--line)}
+.brand{color:var(--gold)}
+.brand-mark{background:var(--gold);color:#15120a;box-shadow:2px 2px 0 #8b6a28}
+.icon-button,.ghost,.secondary-button,.control-button{background:#26231d;color:var(--ink);border:1px solid #6c5a39;box-shadow:none}
+.hero h1,.page-heading h1{font-weight:700;color:#fff8e8}
+.hero-copy,.page-heading>p{color:var(--muted)}
+.hero{padding-bottom:20px}
+.streak-card{background:#211e17;border-color:#796133;box-shadow:none}
+.streak-icon,.streak-card strong{color:var(--gold)}
+.hero-panel{border:1px solid #957943;background:#1c1b18;box-shadow:0 4px 0 #4d3c1d;margin-bottom:25px}
+.rpg-landscape{height:115px;background:linear-gradient(#191a20,#3c3324);border-bottom:1px solid #6d5632}
+.sun{background:#f4ce72;width:42px;height:42px;top:15px;box-shadow:0 0 0 8px #dfb35915,0 0 40px #dfb35955}
+.mountain.far{background:#57503f;box-shadow:-220px 30px 0 #3d3a33;bottom:-150px}
+.mountain.near{background:#282923;box-shadow:340px 55px 0 #242522;bottom:-175px}
+.castle{color:#bc9c58;font-size:78px;top:0;text-shadow:3px 3px 0 #141310}
+.hero-character{color:#f4cf79;font-size:68px;bottom:0;text-shadow:3px 3px 0 #59421b}
+.spark{color:#ffe3a5;font-size:19px}.s1{top:13px}.s2{top:65px}
+.landscape-caption{color:#fbe5ae;text-shadow:0 2px 2px #000;font-size:8px}
+.hero-profile{padding:18px}
+.level-medal{background:#f1cb69;border-color:#ffe5a5;color:#1a1408;box-shadow:0 3px 0 #8b692a}
+.hero-info .eyebrow,.xp-caption{color:#f1cb69}
+.hero-info h2{color:#fff6df}
+progress,progress::-webkit-progress-bar{background:#403a2c}
+progress::-webkit-progress-value{background:linear-gradient(90deg,#b88a33,#ffe29a)}
+progress::-moz-progress-bar{background:#f1cb69}
+.primary-button,.pause-button{background:linear-gradient(115deg,#f7d780,#d9ad4a);color:#17130b;border:1px solid #ffe6aa;box-shadow:0 3px 0 #806123}
+.primary-button:hover:not(:disabled){filter:brightness(1.08)}
+.primary-button:disabled{opacity:.55}
+.play{color:#ffe3a5;background:#211a0e}
+.bottom-nav{background:#141310f5;border-color:#665335}
+.nav-item{color:#c4bba7;font-size:11px;gap:5px}
+.nav-item.active{color:#f7d780}.nav-item.active:after{background:#f7d780}
+.section-heading h2{color:#fff5de;font-size:27px}
+.daily-reward{background:#292317;border:1px solid #806a3d;color:#ffdf91;margin-bottom:20px}
+.score{color:#f5d789;border:1px solid #796239;border-radius:8px;padding:6px 10px;background:#242017}
+.quest-section{margin-top:15px;margin-bottom:24px}
+.goal-list{gap:0;border:1px solid #685537;border-radius:16px;overflow:hidden;background:#1b1a17}
+.daily-challenge{display:flex;width:100%;align-items:center;gap:13px;padding:21px 17px;background:#1c1b18;color:#fff7e3;border:0;border-bottom:1px solid #514633;text-align:left;cursor:pointer;min-height:96px}
+.daily-challenge:last-child{border-bottom:0}
+.daily-challenge:hover{background:#2c271c}
+.challenge-checkbox{width:25px;height:25px;flex:none;display:grid;place-items:center;border:1.5px solid #bc9a56;border-radius:6px;color:#17130b;font-weight:900}
+.daily-icon{color:#f1cb69;font-size:24px;width:28px;text-align:center;flex:none}
+.daily-text{flex:1;min-width:0}.daily-text strong,.daily-text small{display:block}.daily-text strong{font-size:15px;line-height:1.35}.daily-text small{font-size:12px;color:#c6c0b3;margin-top:6px;line-height:1.4}
+.daily-xp{color:#f5d484;font-size:11px;font-weight:850;white-space:nowrap}.row-arrow{color:#d4bb82;font-size:23px}
+.daily-challenge.completed{background:#262318}.completed .challenge-checkbox{background:#f1cb69;border-color:#f1cb69}.completed .daily-text strong{color:#f5d484}.completed .daily-xp{font-size:9px}
+.home-shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}.home-shortcuts button{border:1px solid #685537;background:#201e18;padding:18px;text-align:left;border-radius:14px;cursor:pointer}.home-shortcuts button>span{font-size:24px;color:#f1cb69}.home-shortcuts strong,.home-shortcuts small{display:block;margin-top:7px}.home-shortcuts small{color:var(--muted);line-height:1.5;font-size:12px}
+.quest-settings{color:var(--muted);background:#211e17;border:1px solid #6c5733;border-radius:12px;padding:15px;margin-bottom:20px}.quest-settings summary{color:#f5d484}.quest-settings input{accent-color:#f1cb69}
+.category-links{display:grid;gap:12px;margin-top:22px}
+.back-link{display:inline-flex;align-items:center;min-height:44px;padding:8px 0;margin:8px 0 18px;border:0;background:transparent;color:#f4cf79;cursor:pointer;font-weight:750;font-size:14px}
+.challenge-heading{padding:10px 0 25px}.challenge-heading>span{display:grid;place-items:center;width:74px;height:74px;border:1px solid #b49350;border-radius:18px;background:linear-gradient(140deg,#463719,#211d14);color:#ffe19b;font-size:39px;margin-bottom:24px}.challenge-heading h1{font:700 clamp(32px,7vw,46px)/1.1 Georgia,serif;margin:10px 0 16px;color:#fff6df}.challenge-heading>p:last-child{color:#d1c8b8;font-size:15px;line-height:1.8;margin:0}
+.challenge-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:25px}.challenge-metrics>div{padding:17px 10px;background:#211e17;border:1px solid #6b5632;border-radius:12px}.challenge-metrics small,.challenge-metrics strong{display:block}.challenge-metrics small{font-size:8px;letter-spacing:.08em;color:#c5bca8;line-height:1.5}.challenge-metrics strong{font-size:17px;color:#f9d98b;margin-top:9px}
+.challenge-guide{border:1px solid #514633;border-radius:16px;padding:22px;background:#1b1a17;margin:20px 0}.challenge-guide h2{font:700 25px Georgia;margin-bottom:18px}.challenge-guide ol{padding-left:23px;line-height:1.8;color:#d7cebc;font-size:14px}.challenge-guide li+li{margin-top:13px}.challenge-guide li::marker{color:#f1cb69;font-weight:900}.challenge-guide p{line-height:1.8}.challenge-complete{color:#f9dc96;line-height:1.6;margin-top:22px}
+.workout-card{border:1px solid #806a3d;border-radius:20px}.workout-visual{background:linear-gradient(130deg,#3b3323,#24221a)}.workout-visual:after{border-color:#aa88492a;box-shadow:0 0 0 35px #d4ac4f08,0 0 0 75px #d4ac4f05}.workout-overlay{background:linear-gradient(180deg,transparent 30%,#181712 80%)}.workout-overlay p:not(.eyebrow){color:#d3c7ad}.tags span{background:#17150eed;color:#f8d890;border-color:#897040}.workout-visual svg{filter:none;color:#f1cb69}
+.cindy-card,.kettlebell-card{background:#211e17;border-color:#8a6a35;color:#fff6df;box-shadow:none}.cindy-monogram,.kettlebell-monogram{background:#f1cb69;color:#17130b}.cindy-card p,.kettlebell-card p{color:#d1c5ac}.cindy-sequence{background:#161510;color:#f8df9f}.cindy-sequence b{color:#f9d37c}.cindy-start,.kettlebell-start{background:#252117;color:#ffe4a1;border-color:#a18547}.cindy-start.primary,.kettlebell-start.primary{background:#f1cb69;color:#17130b}.kettlebell-sequence{border-color:#786237}
+.session-block,.catalog-exercise,.activity-grid,.history-item,.empty-state,.plan-card,.stat-card,.menu-row,.menu-note,.steps-card,.manual-activity,.milestone-card{background:#1c1b18;border-color:#6b5634;color:#fff7e3;box-shadow:none}.steps-card{background:linear-gradient(140deg,#292317,#191815)}.steps-total strong{color:#f7d780}.manual-activity>p,.field-help,.steps-total span,#stepSource{color:#c8bfad}.steps-card summary{color:#f1cb69}.step-history{border-color:#514633}.step-history small{color:#c6c0b3}.milestone-card a{color:#f7d780}.milestone-card{line-height:1.8}.profile-card{background:linear-gradient(140deg,#392e19,#211d15);border:1px solid #977840;box-shadow:none}.profile-avatar{background:#f1cb69;color:#18130a}.profile-card small{color:#f1cb69}.profile-card p{color:#c8bfad}.menu-row-icon{background:#30291b;color:#f1cb69}.menu-note p{color:#d5c7ac}.stat-card.dark{background:linear-gradient(125deg,#3e3016,#272016);border:1px solid #a3813e}.stat-card.dark small{color:#f1cb69}.stat-card.dark p{color:#d8cdb6}.activity-cell{background:#38342b}.activity-cell.active{background:#e3b855}.week-day.today{color:#19140a;background:#f1cb69;box-shadow:none}.plan-number{background:#30291b;color:#f1cb69}.catalog-picture{background:#f5f2eb}
+.steps-card input,.manual-activity input,.manual-activity select,.settings-content input,.settings-content select,#catalogFilter{background:#11110f;color:#fff5de;border-color:#8f794c}.settings-content input::placeholder,.manual-activity input::placeholder,.steps-card input::placeholder{color:#aaa18f}
+.workout-player,.workout-player.is-recovery,.settings-panel,.finish-screen,.cindy-player,.kettlebell-player{background:#141310;color:#fff8e8}.player-header strong,.is-recovery .player-header strong{color:#f1cb69}.player-progress{background:#3f3727}.player-progress i{background:linear-gradient(90deg,#b58632,#ffe09a)}.exercise-figure{background:radial-gradient(circle,#39301d,transparent 68%);color:#f1cb69}.movement-steps,.finish-stats div,.cindy-movement{background:#211e17;border-color:#796139;color:#fff4db}.timer-ring{background:conic-gradient(#f1cb69 var(--progress),#403829 0);box-shadow:none}.timer-ring:before{background:#171510}.is-recovery .timer-ring:before{background:#171510}.live-calories{background:#30291b;color:#f1cb69}.pause-button.paused{color:#17130b}.finish-badge{background:#f1cb69;color:#17130b;box-shadow:0 8px 28px #ddb55222}.cindy-timer{color:#ffe2a1}.round-counter,.kettlebell-counter{background:#252016;border-color:#a2874d;color:#ffe2a1}.cindy-controls,.kettlebell-controls{background:#141310;border-color:#5e4d30}.cindy-pause{background:#252016;color:#ffe4a5;border-color:#a2874d}
+.quest-success{background:radial-gradient(circle at 50% 0,#4c391a,#1c1a14 55%,#121210);border-color:#dbb85e;color:#fff6df;box-shadow:0 20px 100px #000a}.quest-success::backdrop,dialog::backdrop{background:#000b;backdrop-filter:blur(7px)}.victory-star{color:#f1cb69;text-shadow:0 3px 0 #7c5b20}.xp-reward{color:#ffdb84}.quest-success p{color:#e6d5b4}.toast{background:#f1cb69;color:#17130b;border:1px solid #fff0c5;max-width:92vw;white-space:normal;text-align:center}
+.cindy-card p:not(.eyebrow),.kettlebell-card p:not(.eyebrow),.cindy-guidance{color:#d9cbb1}
+.cindy-sequence span,.kettlebell-sequence span,.cindy-movement b{background:#30291b;color:#ffe2a1}
+.cindy-start.primary small,.kettlebell-start.primary small{color:#3e2c0d}
+.kettlebell-card .kettlebell-note{background:#30291b;color:#dfcfad}
+.round-counter small{color:#e2c78c}
+.is-recovery .timer-ring{background:conic-gradient(#f1cb69 var(--progress),#403829 0);box-shadow:none}
+.is-recovery .timer,.is-recovery .timer-ring small{color:#ffe2a1}
+.is-recovery .player-progress i{background:#f1cb69}
+.is-recovery .exercise-figure{color:#f1cb69;background:radial-gradient(circle,#39301d,transparent 68%)}
+.is-recovery .movement-steps{border-color:#796139}
+.is-recovery .movement-steps li::marker{color:#f1cb69}
+.is-recovery .pause-button:not(.paused){background:#f1cb69;border-color:#ffe6aa;color:#17130b}
+button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #ffe6a1;outline-offset:4px}
+@media(max-width:420px){.daily-challenge{gap:9px;padding:18px 12px}.daily-icon{display:none}.daily-text strong{font-size:14px}.daily-text small{font-size:11px}.daily-xp{font-size:10px}.challenge-metrics{gap:6px}.challenge-metrics>div{padding:14px 8px}.challenge-metrics strong{font-size:14px}.challenge-metrics small{font-size:7px}.home-shortcuts button{padding:15px}.hero-profile{padding:16px 14px}.hero-info h2{font-size:17px}.rpg-landscape{height:100px}}

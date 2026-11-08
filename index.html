@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#6452cd">
-  <meta name="description" content="Routine quotidienne de callisthénie guidée en 15 à 20 minutes.">
+  <meta name="theme-color" content="#111111">
+  <meta name="description" content="Tes défis quotidiens, tes activités et ta progression RPG.">
   <title>Callisthenut</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=15">
+  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="theme.css?v=16">
 </head>
 <body>
   <div class="app-shell">
@@ -34,10 +35,12 @@
           <div class="rpg-landscape" aria-hidden="true"><span class="sun"></span><span class="mountain far"></span><span class="mountain near"></span><span class="castle">♜</span><span class="hero-character">♞</span><span class="spark s1">✦</span><span class="spark s2">✧</span><span class="landscape-caption">LE ROYAUME DES AURORES</span></div>
           <div class="hero-profile"><div class="level-medal"><small>LVL</small><strong id="heroLevel">01</strong></div><div class="hero-info"><p class="eyebrow">TON AVENTURE COMMENCE ICI</p><h2 id="heroRank">Apprenti des aurores</h2><div class="xp-caption"><span>EXPÉRIENCE</span><strong id="xpLabel"></strong></div><progress id="heroXp" max="100" value="0" aria-label="Progression vers le prochain niveau"></progress></div></div>
         </section>
-        <section class="steps-card section-block" aria-labelledby="stepsTitle"><p class="eyebrow">EXPLORATION QUOTIDIENNE</p><h2 id="stepsTitle">Chaque pas est une aventure</h2><div class="steps-total"><strong id="stepCount">0</strong><span id="stepTargetLabel">/ 6 000 pas</span></div><progress id="stepProgress" max="100" value="0" aria-label="Objectif de pas quotidien"></progress><p id="stepSource"></p><button id="claimStepXp" class="primary-button" disabled>Prochain palier : 1 000 pas</button><p class="field-help">10 XP par tranche de 1 000 pas · maximum 60 XP/jour. Objectif personnel, ajustable ci-dessous.</p><details><summary>Mes pas et ma connexion Android</summary><p id="healthConnection"></p><div class="health-actions"><button type="button" id="syncHealth" class="secondary-button">Connecter / synchroniser Health Connect</button><button type="button" id="disconnectHealth" class="secondary-button">Désactiver la synchronisation</button></div><p id="healthStatus" role="status" aria-live="polite"></p><p class="field-help">Lecture des pas uniquement, après ton autorisation. Active le partage vers Health Connect dans ton application de santé compatible. Les données restent sur cet appareil. La synchronisation a lieu quand l’application Android est ouverte.</p><form id="manualStepsForm" class="compact-form"><label>Total de pas aujourd’hui<input name="manualSteps" type="number" min="0" max="200000" step="1" required placeholder="Ex. 4250"></label><button class="secondary-button">Enregistrer le total</button></form><p class="field-help">Saisis un total, pas des pas supplémentaires. Une synchronisation remplacera la saisie manuelle ; les deux sources ne sont jamais additionnées.</p><form id="stepGoalForm" class="compact-form"><label>Mon objectif quotidien<input name="stepGoal" type="number" min="1000" max="30000" step="1" required placeholder="Ex. 6000"></label><button class="secondary-button">Modifier l’objectif</button></form><h3>Les 7 derniers jours renseignés</h3><div id="recentSteps"></div></details></section>
-        <section class="manual-activity section-block"><div class="section-heading"><div><p class="eyebrow">TES EXPLOITS HORS ÉCRAN</p><h2>Ajouter une activité</h2></div></div><p>Natation, escalade, sport collectif, jardinage… Consigne une activité que ton téléphone n’a pas suivie.</p><form id="manualActivityForm"><label>Activité<input name="activityName" maxlength="60" required placeholder="Ex. Natation"></label><div class="activity-fields"><label>Durée en minutes<input name="activityMinutes" type="number" min="1" max="1440" step="0.1" required placeholder="30"></label><label>Intensité<select name="activityIntensity"><option value="2.5">Douce</option><option value="5" selected>Modérée</option><option value="8">Soutenue</option></select></label></div><label>Calories dépensées (facultatif)<input name="activityCalories" type="number" min="0" max="10000" step="1" placeholder="Laisser vide pour estimer"></label><p class="field-help">Sans calories renseignées, estimation selon ton poids, la durée et l’intensité. Saisis chaque activité une seule fois : les séances et quêtes déjà validées sont dans ton historique. Ces activités libres ne valident pas une quête du jour.</p><p id="activityError" role="alert"></p><button class="primary-button">Enregistrer mon exploit ✦</button></form></section>
-        <section class="section-block quest-section"><div class="section-heading"><div><p class="eyebrow">LE TABLEAU DE LA GUILDE</p><h2>Tes quêtes quotidiennes</h2></div><span class="score" id="goalScore">0/2</span></div><p id="dayReward" class="daily-reward"></p><details class="quest-settings"><summary>Choisir mes quêtes du jour</summary><p>À choisir avant ta première validation. Chaque quête choisie manquée coûte 10 XP le lendemain, au maximum 30 XP par journée planifiée. Les jours sans plan sont libres.</p><div id="questChoices"></div></details><div class="goal-list" id="goalList"></div></section>
-        <div class="section-heading workout-choice-heading"><div><p class="eyebrow">CHOISIS TA MISSION</p><h2>Entraînement du jour</h2></div></div>
+        <section class="section-block quest-section"><div class="section-heading"><div><p class="eyebrow">LE TABLEAU DE LA GUILDE</p><h2>Tes quêtes quotidiennes</h2></div><span class="score" id="goalScore">0/2</span></div><p id="dayReward" class="daily-reward"></p><div class="goal-list" id="goalList"></div></section>
+        <div class="home-shortcuts"><button data-screen="activities"><span>＋</span><strong>Autres activités</strong><small>Choisir un défi ou consigner un exploit</small></button><button data-screen="steps"><span>↗</span><strong>Mes pas</strong><small>Exploration et connexion Android</small></button></div>
+      </section>
+
+      <section class="view" id="activitiesView" data-view="activities"><div class="page-heading"><p class="eyebrow">LES PORTES DE LA GUILDE</p><h1>Tes activités</h1><p>Choisis ton prochain défi ou consigne une activité libre.</p></div><div class="section-heading"><h2>Composer ma journée</h2></div><details class="quest-settings"><summary>Choisir mes quêtes du jour</summary><p>À choisir avant ta première validation. Chaque quête choisie manquée coûte 10 XP le lendemain, au maximum 30 XP par journée planifiée. Les jours sans plan sont libres.</p><div id="questChoices"></div></details><div id="activityCategories" class="goal-list"></div><div class="category-links"><button class="menu-row" data-screen="manual"><span class="menu-row-icon">＋</span><span><strong>Activité libre</strong><small>Natation, escalade, sport collectif…</small></span><b>›</b></button><button class="menu-row" data-screen="steps"><span class="menu-row-icon">↗</span><span><strong>Pas et santé Android</strong><small>Objectif quotidien et synchronisation</small></span><b>›</b></button><button class="menu-row" data-screen="plan"><span class="menu-row-icon">▤</span><span><strong>Planning et exercices</strong><small>Programme de la semaine et bibliothèque</small></span><b>›</b></button></div></section>
+      <section class="view" id="challengeView" data-view="challenge"><button class="back-link" data-screen="today">← Défis du jour</button><div class="challenge-heading"><span id="challengeIcon" aria-hidden="true"></span><p class="eyebrow" id="challengeStatus"></p><h1 id="challengeTitle"></h1><p id="challengeDescription"></p></div><div class="challenge-metrics"><div><small>OBJECTIF</small><strong id="challengeTarget"></strong></div><div><small>RÉCOMPENSE</small><strong id="challengeXp"></strong></div><div><small>ÉNERGIE ESTIMÉE</small><strong id="challengeCalories"></strong></div></div><section class="challenge-guide"><h2>Ta mission</h2><ol id="challengeInstructions"></ol></section><div id="workoutChallenge" hidden>        <div class="section-heading workout-choice-heading"><div><p class="eyebrow">CHOISIS TA MISSION</p><h2>Entraînement du jour</h2></div></div>
         <section class="workout-card" id="todayWorkout">
           <div class="workout-visual" id="heroVisual"></div>
           <div class="workout-overlay">
@@ -58,16 +61,18 @@
           <div class="cindy-actions"><button class="cindy-start primary" id="startCindyClassic"><span>Classique</span><small>20 MIN</small></button><button class="cindy-start" id="startCindyBeginner"><span>Débutant</span><small>15 MIN</small></button></div>
         </section>
 
-        <section class="kettlebell-card">
+</div><div id="kettlebellChallenge" hidden>        <section class="kettlebell-card">
           <div class="cindy-card-top"><span class="kettlebell-monogram">KB</span><div><p class="eyebrow">DOS · CENTRE · CONDITIONNEMENT</p><h2>Kettlebell</h2><p>Renforce la chaîne postérieure et augmente la dépense énergétique avec une seule kettlebell.</p></div></div>
           <div class="cindy-sequence kettlebell-sequence"><span><b>10</b> deadlifts</span><i>→</i><span><b>8/bras</b> rowings</span><i>→</i><span><b>12</b> swings</span><i>→</i><span><b>20 s</b> gainage</span></div>
           <p class="kettlebell-note">La perte de graisse est globale : régularité, alimentation et dépense énergétique font la différence.</p>
           <div class="cindy-actions"><button class="kettlebell-start primary" id="startKettlebellClassic"><span>Essentiel</span><small>18 MIN</small></button><button class="kettlebell-start" id="startKettlebellBeginner"><span>Initiation</span><small>15 MIN</small></button></div>
         </section>
 
-        <section class="quote-card"><span>“</span><p>La discipline, c'est choisir entre ce que tu veux maintenant et ce que tu veux le plus.</p></section>
-      </section>
-
+</div><section id="outdoorChallenge" class="challenge-guide" hidden><h2>À toi de jouer</h2><p id="challengeActionDescription"></p><p class="field-help">La validation est déclarative. Termine l’activité décrite avant de valider ce défi.</p></section><button class="primary-button" id="completeChallenge">J’ai terminé ce défi ✦</button><p class="challenge-complete" id="challengeCompleteMessage" role="status"></p></section>
+      <section class="view" id="stepsView" data-view="steps"><button class="back-link" data-screen="today">← Accueil</button><div class="page-heading"><p class="eyebrow">EXPLORATION</p><h1>Mes pas</h1><p>Chaque déplacement fait avancer ton aventure.</p></div>        <section class="steps-card section-block" aria-labelledby="stepsTitle"><p class="eyebrow">EXPLORATION QUOTIDIENNE</p><h2 id="stepsTitle">Chaque pas est une aventure</h2><div class="steps-total"><strong id="stepCount">0</strong><span id="stepTargetLabel">/ 6 000 pas</span></div><progress id="stepProgress" max="100" value="0" aria-label="Objectif de pas quotidien"></progress><p id="stepSource"></p><button id="claimStepXp" class="primary-button" disabled>Prochain palier : 1 000 pas</button><p class="field-help">10 XP par tranche de 1 000 pas · maximum 60 XP/jour. Objectif personnel, ajustable ci-dessous.</p><details><summary>Mes pas et ma connexion Android</summary><p id="healthConnection"></p><div class="health-actions"><button type="button" id="syncHealth" class="secondary-button">Connecter / synchroniser Health Connect</button><button type="button" id="disconnectHealth" class="secondary-button">Désactiver la synchronisation</button></div><p id="healthStatus" role="status" aria-live="polite"></p><p class="field-help">Lecture des pas uniquement, après ton autorisation. Active le partage vers Health Connect dans ton application de santé compatible. Les données restent sur cet appareil. La synchronisation a lieu quand l’application Android est ouverte.</p><form id="manualStepsForm" class="compact-form"><label>Total de pas aujourd’hui<input name="manualSteps" type="number" min="0" max="200000" step="1" required placeholder="Ex. 4250"></label><button class="secondary-button">Enregistrer le total</button></form><p class="field-help">Saisis un total, pas des pas supplémentaires. Une synchronisation remplacera la saisie manuelle ; les deux sources ne sont jamais additionnées.</p><form id="stepGoalForm" class="compact-form"><label>Mon objectif quotidien<input name="stepGoal" type="number" min="1000" max="30000" step="1" required placeholder="Ex. 6000"></label><button class="secondary-button">Modifier l’objectif</button></form><h3>Les 7 derniers jours renseignés</h3><div id="recentSteps"></div></details></section>
+</section>
+      <section class="view" id="manualView" data-view="manual"><button class="back-link" data-screen="activities">← Activités</button><div class="page-heading"><p class="eyebrow">JOURNAL LIBRE</p><h1>Un nouvel exploit</h1></div>        <section class="manual-activity section-block"><div class="section-heading"><div><p class="eyebrow">TES EXPLOITS HORS ÉCRAN</p><h2>Ajouter une activité</h2></div></div><p>Natation, escalade, sport collectif, jardinage… Consigne une activité que ton téléphone n’a pas suivie.</p><form id="manualActivityForm"><label>Activité<input name="activityName" maxlength="60" required placeholder="Ex. Natation"></label><div class="activity-fields"><label>Durée en minutes<input name="activityMinutes" type="number" min="1" max="1440" step="0.1" required placeholder="30"></label><label>Intensité<select name="activityIntensity"><option value="2.5">Douce</option><option value="5" selected>Modérée</option><option value="8">Soutenue</option></select></label></div><label>Calories dépensées (facultatif)<input name="activityCalories" type="number" min="0" max="10000" step="1" placeholder="Laisser vide pour estimer"></label><p class="field-help">Sans calories renseignées, estimation selon ton poids, la durée et l’intensité. Saisis chaque activité une seule fois : les séances et quêtes déjà validées sont dans ton historique. Ces activités libres ne valident pas une quête du jour.</p><p id="activityError" role="alert"></p><button class="primary-button">Enregistrer mon exploit ✦</button></form></section>
+</section>
       <section class="view" id="planView" data-view="plan">
         <div class="page-heading"><p class="eyebrow">PROGRAMME</p><h1>Ta semaine</h1><p>Une progression équilibrée, pensée pour bouger chaque jour.</p></div>
         <div class="week-strip" id="weekStrip"></div>
@@ -104,7 +109,7 @@
 
     <nav class="bottom-nav" aria-label="Navigation principale">
       <button class="nav-item active" data-target="today"><svg viewBox="0 0 24 24"><path d="m4 11 8-7 8 7v9h-6v-6h-4v6H4Z"/></svg><span>Aujourd'hui</span></button>
-      <button class="nav-item" data-target="plan"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span>Planning</span></button>
+      <button class="nav-item" data-target="activities"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span>Activités</span></button>
       <button class="nav-item" data-target="progress"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Progrès</span></button>
       <button class="nav-item" data-target="menu"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/></svg><span>Menu</span></button>
     </nav>
@@ -143,7 +148,7 @@
 
   <dialog class="finish-screen" id="finishScreen">
     <div class="finish-content">
-      <div class="finish-badge">✓</div>
+      <div class="finish-badge">✦</div><p class="xp-reward" id="finishXp"></p>
       <p class="eyebrow">MISSION ACCOMPLIE</p>
       <h2>Solide jusqu’au bout.</h2>
       <p class="finish-copy">Chaque séance compte. Prends un instant pour apprécier le travail accompli.</p>
@@ -182,11 +187,11 @@
       <button class="primary-button save-settings" id="saveSettings" value="default">Enregistrer</button>
     </form>
   </dialog>
-  <dialog id="questSuccess" class="quest-success"><div class="victory-star" aria-hidden="true">✦</div><p class="eyebrow">VICTOIRE !</p><h2 id="questRewardTitle"></h2><strong id="questReward" class="xp-reward"></strong><p id="questRewardDetail"></p><p id="questLevelUp" aria-live="polite"></p><button id="closeQuestSuccess" class="primary-button">Continuer l’aventure →</button></dialog>
+  <dialog id="questSuccess" class="quest-success"><div class="victory-star" aria-hidden="true">✦</div><p class="eyebrow">VICTOIRE !</p><h2 id="questRewardTitle"></h2><strong id="questReward" class="xp-reward"></strong><p id="questRewardDetail"></p><p id="questLevelUp" aria-live="polite"></p><button id="closeQuestSuccess" class="primary-button">Revenir aux défis →</button></dialog>
   <div class="toast" id="toast" role="status"></div>
-  <script src="exercise-catalog.js?v=15"></script>
-  <script src="workout-planner.js?v=15"></script>
-  <script src="app.js?v=15"></script>
-  <script src="health.js?v=15"></script>
+  <script src="exercise-catalog.js?v=16"></script>
+  <script src="workout-planner.js?v=16"></script>
+  <script src="app.js?v=16"></script>
+  <script src="health.js?v=16"></script>
 </body>
 </html>

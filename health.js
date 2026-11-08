@@ -25,6 +25,7 @@ function recordActivity(data){
  return gain;
 }
 function showActivityReward(name,xp,detail){
+ navigateTo('today');
  document.querySelector('#questRewardTitle').textContent=name;
  document.querySelector('#questReward').textContent=`+${xp} XP`;
  document.querySelector('#questRewardDetail').textContent=detail;

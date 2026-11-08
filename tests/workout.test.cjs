@@ -3,7 +3,16 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const elements=new Map();
-function element(id){if(!elements.has(id))elements.set(id,{textContent:'',innerHTML:'',value:'',style:{setProperty(){}},classList:{add(){},remove(){},toggle(){}},addEventListener(){},setAttribute(){},querySelector:element,showModal(){this.open=true},close(){this.open=false}});return elements.get(id)}
+function element(id){
+ if(!elements.has(id)){
+  const classes=new Set(),listeners={};
+  elements.set(id,{textContent:'',innerHTML:'',value:'',style:{setProperty(){}},
+   classList:{add:c=>classes.add(c),remove:c=>classes.delete(c),toggle:c=>classes.has(c)?classes.delete(c):classes.add(c),contains:c=>classes.has(c)},
+   listeners,addEventListener(type,handler){listeners[type]=handler},setAttribute(){},querySelector:element,focus(){},
+   showModal(){this.open=true},close(){this.open=false}});
+ }
+ return elements.get(id);
+}
 const storage=new Map();
 const context=vm.createContext({console,crypto:require('node:crypto').webcrypto,Date,Math,Set,Map,Uint32Array,
   localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},
@@ -185,4 +194,56 @@ test('Health Connect callback handles unavailable bridge and rejected permission
   run('window.AndroidHealth={};window.receiveHealthSteps({error:"Refus"})');assert.equal(element('#healthStatus').textContent,'Refus');
   run('window.receiveHealthSteps({date:dateKey(),steps:4000})');assert.equal(run('stepTotal(state.health.steps[dateKey()])'),4000);
  }finally{run('delete window.AndroidHealth');run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState()`)}
+});
+
+test('home lists only daily challenges; opening a challenge does not validate it',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:0,days:{},ledger:[]};settleDays();render();openChallenge("water")');
+  assert.equal(run('state.rpg.xp'),0);
+  assert.equal(element('#challengeTitle').textContent,'La source de vie');
+  assert.equal(element('#completeChallenge').hidden,false);
+  assert.ok(element('#goalList').innerHTML.includes('data-open-quest="water"'));
+  assert.ok(!element('#goalList').innerHTML.includes('data-open-quest="run"'));
+  assert.ok(element('#activityCategories').innerHTML.includes('data-open-quest="run"'));
+  assert.ok(!element('#goalList').innerHTML.includes('data-claim'));
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+test('challenge confirmation checks the home row, shows XP, and returns home without a duplicate reward',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:0,days:{},ledger:[]};settleDays();openChallenge("water")');
+  element('#completeChallenge').listeners.click();
+  assert.equal(run('state.rpg.xp'),40);
+  assert.equal(element('#questSuccess').open,true);
+  assert.equal(element('[data-view="today"]').classList.contains('active'),true);
+  assert.ok(element('#goalList').innerHTML.includes('La source de vie : terminé'));
+  element('#closeQuestSuccess').listeners.click();assert.equal(element('#questSuccess').open,false);
+  run('openChallenge("water")');assert.equal(element('#completeChallenge').hidden,true);
+  element('#completeChallenge').listeners.click();assert.equal(run('state.rpg.xp'),40);
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+test('guided challenge screens expose only their own player and require session completion',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:0,days:{},ledger:[]};settleDays();openChallenge("workout")');
+  assert.equal(element('#workoutChallenge').hidden,false);assert.equal(element('#kettlebellChallenge').hidden,true);
+  assert.equal(element('#completeChallenge').hidden,true);
+  element('#completeChallenge').listeners.click();assert.equal(run('state.rpg.xp'),0);
+  run('openChallenge("kettlebell")');assert.equal(element('#workoutChallenge').hidden,true);assert.equal(element('#kettlebellChallenge').hidden,false);
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+test('routes restore challenge details from a deep link and reject unknown screens',()=>{
+ try{
+  run('window.location={hash:"#challenge/bike"};routeFromHash()');assert.equal(element('#challengeTitle').textContent,'Traverser la vallée');
+  run('window.location.hash="#missing";routeFromHash()');assert.equal(element('[data-view="today"]').classList.contains('active'),true);
+  run('window.location.hash="#challenge/missing";routeFromHash()');assert.equal(element('[data-view="today"]').classList.contains('active'),true);
+ }finally{run('delete window.location;activeQuest=null')}
+});
+test('category screens have unique IDs and keep steps, manual forms and dojo off the home screen',()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ const ids=[...html.matchAll(/id="([^"]+)"/g)].map(x=>x[1]);assert.equal(new Set(ids).size,ids.length);
+ const home=html.slice(html.indexOf('id="todayView"'),html.indexOf('id="activitiesView"'));
+ for(const id of ['manualActivityForm','stepCount','startWorkout','startKettlebellClassic'])assert.ok(!home.includes(`id="${id}"`),id);
+ for(const view of ['today','activities','challenge','steps','manual','plan','progress','menu'])assert.ok(html.includes(`data-view="${view}"`),view);
 });
