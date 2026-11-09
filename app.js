@@ -47,14 +47,14 @@ const DAY_NAMES=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const QUESTS=[
  {id:'daily-strength',icon:'⚡',name:'Mini-défi du jour',detail:'Renforcement · obligatoire',minutes:0,met:0,xp:25,mandatory:true},
  {id:'workout',icon:'⚔',name:'La voie du guerrier',detail:'Calisthénie · 15 min',minutes:15,met:5,xp:60},
- {id:'walk',icon:'❀',name:'Explorer les sentiers',detail:'Marche active · 20 min minimum',minutes:20,met:3.5,xp:45,flexible:true},
- {id:'run',icon:'➶',name:'La foulée du vent',detail:'Course · 15 min minimum',minutes:15,met:8,xp:60,flexible:true},
- {id:'bike',icon:'☸',name:'Traverser la vallée',detail:'Vélo · 30 min minimum',minutes:30,met:6,xp:60,flexible:true},
+ {id:'walk',icon:'❀',name:'Marche active',detail:'Marche active · 20 min minimum',minutes:20,met:3.5,xp:45,flexible:true},
+ {id:'run',icon:'➶',name:'Course à pied',detail:'Course · 15 min minimum',minutes:15,met:8,xp:60,flexible:true},
+ {id:'bike',icon:'☸',name:'Faire du vélo',detail:'Vélo · 30 min minimum',minutes:30,met:6,xp:60,flexible:true},
  {id:'kettlebell',icon:'◆',name:'La force du cristal',detail:'Kettlebell · 15 min',minutes:15,met:6,xp:60},
  {id:'shadowboxing',icon:'✊',name:'Shadow boxing',detail:'Boxe dans le vide · 15 min minimum',minutes:15,met:5,xp:60,flexible:true},
  {id:'bedtime',icon:'☾',name:'Se coucher tôt',detail:'Sommeil · défi permanent',minutes:0,met:0,xp:40,permanent:true},
  {id:'nutrition',icon:'♧',name:'Bien manger',detail:'Alimentation · déclaration du jour',minutes:0,met:0,xp:0,permanent:true},
- {id:'water',icon:'♧',name:'La source de vie',detail:'Hydratation · cible personnelle',minutes:0,met:0,xp:40}
+ {id:'water',icon:'♧',name:'Boire de l\'eau',detail:'Hydratation · cible personnelle',minutes:0,met:0,xp:40}
 ];
 let activeQuest=null;
 const questDurationDrafts={};
