@@ -47,6 +47,10 @@ function updateSteps(day,count,source){
  health.steps[day]=entry;saveState();renderHealth();return stepTotal(entry);
 }
 function stepTotal(entry){return entry?.source?entry[entry.source]||0:0}
+function validateWalkFromSteps(){
+ if(stepTotal(healthState().steps[dateKey()])<=6000||state.rpg.days[dateKey()]?.claims.walk)return;
+ claimQuest('walk',0,false,undefined,'steps');
+}
 function setStepGoal(value){
  const goal=Number(value);
  if(!Number.isSafeInteger(goal)||goal<1000||goal>30000)throw Error('Choisis un objectif entre 1 000 et 30 000 pas.');
@@ -63,6 +67,8 @@ function rewardSteps(){
  saveState();render();renderHealth();showActivityReward('Les pas de l’aventure',gain,'10 XP par tranche de 1 000 pas, jusqu’à 60 XP par jour. Les pas ne rajoutent pas de calories à celles des activités.');return gain;
 }
 function renderHealth(){
+ // Also reconcile an already saved total on startup or return to the app.
+ validateWalkFromSteps();
  // Older APKs don't resize the web viewport around Android's navigation bar.
  document.documentElement?.style?.setProperty('--legacy-android-inset',hasHealthBridge()&&!window.AndroidHealth.systemInsetsHandled?'48px':'0px');
  const health=healthState(),entry=health.steps[dateKey()],total=stepTotal(entry);

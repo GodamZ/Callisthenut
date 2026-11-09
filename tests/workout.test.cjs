@@ -181,9 +181,29 @@ test('step observations replace totals; sources are not added and rewards are id
   run('updateSteps(dateKey(),5000,"health-connect")');assert.equal(run('rewardSteps()'),0);
   run('updateSteps(dateKey(),12000,"health-connect")');assert.equal(run('rewardSteps()'),10);
   run('setStepGoal(1000)');assert.equal(run('rewardSteps()'),0);
-  assert.equal(run('state.rpg.xp'),60);assert.equal(run('loadState().health.steps[dateKey()].rewarded'),60);
+  assert.equal(run('state.rpg.xp'),105);assert.equal(run('loadState().health.steps[dateKey()].rewarded'),60);
   run('updateSteps(dateKey(),0,"health-connect")');assert.equal(run('rewardSteps()'),0);
  }finally{run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState()`)}
+});
+test('walking validates above 6000 steps, persists, and never duplicates XP or invents activity',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.health={steps:{},goal:1000};state.rpg={xp:0,days:{},ledger:[]};state.history=[];settleDays()');
+  for(const count of [5999,6000]){run(`updateSteps(dateKey(),${count},"manual")`);assert.equal(run('!!state.rpg.days[dateKey()].claims.walk'),false)}
+  run('updateSteps(dateKey(),6001,"manual")');
+  assert.equal(run('state.rpg.xp'),45);assert.equal(run('state.history.length'),0);
+  assert.equal(run('state.rpg.days[dateKey()].claims.walk.calories'),0);
+  assert.equal(run('state.rpg.days[dateKey()].claims.walk.minutes'),0);
+  assert.equal(run('loadState().rpg.days[dateKey()].claims.walk.calorieSource'),'steps');
+  run('window.AndroidHealth={};window.receiveHealthSteps({date:dateKey(),steps:9000});renderHealth();setStepGoal(30000);updateSteps(dateKey(),0,"manual")');
+  assert.equal(run('state.rpg.xp'),45);assert.equal(run('claimQuest("walk",100,true,30)'),0);
+  run('openChallenge("walk")');assert.equal(element('#challengeDurationSection').hidden,true);
+  assert.equal(element('#challengeTarget').textContent,'Plus de 6 000 pas');
+  run('state.rpg={xp:0,days:{},ledger:[]};state.health.steps={[dateKey()]:{manual:6001,source:"manual"}};renderHealth();renderHealth()');
+  assert.equal(run('state.rpg.xp'),45);
+  run('state.health.steps={};state.rpg={xp:0,days:{},ledger:[]};settleDays();claimQuest("walk",0,false,20)');
+  const xp=run('state.rpg.xp');run('updateSteps(dateKey(),7000,"health-connect")');assert.equal(run('state.rpg.xp'),xp);
+ }finally{run(`delete window.AndroidHealth;activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
 });
 test('steps reject stale dates, invalid counts, unknown sources and invalid goals',()=>{
  for(const code of ['updateSteps("2020-01-01",123,"manual")','updateSteps(dateKey(),-1,"manual")','updateSteps(dateKey(),1.5,"manual")','updateSteps(dateKey(),300000,"manual")','updateSteps(dateKey(),50,"sensor")','setStepGoal(0)','setStepGoal(6000.5)'])assert.throws(()=>run(code));
@@ -203,7 +223,7 @@ test('home lists only daily challenges; opening a challenge does not validate it
  try{
   run('state.rpg={xp:0,days:{},ledger:[]};settleDays();render();openChallenge("water")');
   assert.equal(run('state.rpg.xp'),0);
-  assert.equal(element('#challengeTitle').textContent,'La source de vie');
+  assert.equal(element('#challengeTitle').textContent,run('questForId("water").name'));
   assert.equal(element('#completeChallenge').hidden,false);
   assert.ok(element('#goalList').innerHTML.includes('data-open-quest="water"'));
   assert.ok(!element('#goalList').innerHTML.includes('data-open-quest="run"'));
@@ -219,7 +239,7 @@ test('challenge confirmation checks the home row, shows XP, and returns home wit
   assert.equal(run('state.rpg.xp'),40);
   assert.equal(element('#questSuccess').open,true);
   assert.equal(element('[data-view="today"]').classList.contains('active'),true);
-  assert.ok(element('#goalList').innerHTML.includes('La source de vie : terminé'));
+  assert.ok(element('#goalList').innerHTML.includes(run('questForId("water").name')+' : terminé'));
   element('#closeQuestSuccess').listeners.click();assert.equal(element('#questSuccess').open,false);
   run('openChallenge("water")');assert.equal(element('#completeChallenge').hidden,true);
   element('#completeChallenge').listeners.click();assert.equal(run('state.rpg.xp'),40);
@@ -237,7 +257,7 @@ test('guided challenge screens expose only their own player and require session 
 });
 test('routes restore challenge details from a deep link and reject unknown screens',()=>{
  try{
-  run('window.location={hash:"#challenge/bike"};routeFromHash()');assert.equal(element('#challengeTitle').textContent,'Traverser la vallée');
+  run('window.location={hash:"#challenge/bike"};routeFromHash()');assert.equal(element('#challengeTitle').textContent,run('questForId("bike").name'));
   run('window.location.hash="#missing";routeFromHash()');assert.equal(element('[data-view="today"]').classList.contains('active'),true);
   run('window.location.hash="#challenge/missing";routeFromHash()');assert.equal(element('[data-view="today"]').classList.contains('active'),true);
  }finally{run('delete window.location;activeQuest=null')}
@@ -316,17 +336,17 @@ test('bedtime is permanent, has no calorie reward, and cannot bypass its declara
   assert.equal(element('#bedtimeChallenge').hidden,false);assert.equal(element('#completeChallenge').hidden,true);
   assert.equal(run('questCalories(QUESTS.find(q=>q.id==="bedtime"))'),0);
   assert.equal(run('claimQuest("bedtime")'),0);
-  run('saveSleepSettings("07:00",8)');assert.equal(run('sleepTarget().label'),'23:00');
-  assert.throws(()=>run('saveSleepSettings("25:00",8)'));assert.throws(()=>run('saveSleepSettings("07:00",3)'));
+  assert.equal(element('#challengeTarget').textContent,'Au plus tard à minuit');
+  assert.ok(!fs.readFileSync('index.html','utf8').includes('id="sleepWake"'));
  }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));delete state.sleepSettings;saveState();render()`)}
 });
-test('bedtime rules distinguish the advised target, midnight exactly, and after midnight',()=>{
+test('bedtime validates through midnight independently of old wake settings',()=>{
  const saved=run('JSON.stringify(state)');
  try{
   run('state.sleepSettings={wake:"07:00",hours:8}');
   for(const [actual,success,late] of [
-   ['2026-11-07T22:59',true,false],['2026-11-07T23:00',true,false],['2026-11-07T23:59',false,false],
-   ['2026-11-08T00:00',false,false],['2026-11-08T00:01',false,true]
+   ['2026-11-07T22:59',true,false],['2026-11-07T23:00',true,false],['2026-11-07T23:59',true,false],
+   ['2026-11-08T00:00',true,false],['2026-11-08T00:01',false,true]
   ]){
    const result=run(`evaluateBedtime("2026-11-07",${JSON.stringify(actual)},new Date("2026-11-08T10:00"))`);
    assert.equal(result.success,success,actual);assert.equal(result.late,late,actual);
@@ -432,7 +452,7 @@ test('nutrition can be validated and cleared directly, persists its checkmark, a
  }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
 });
 test('nutrition screen has direct buttons and no calorie entry or counter',()=>{
- const html=fs.readFileSync('index.html','utf8');const screen=html.slice(html.indexOf('<section id="nutritionChallenge"'),html.indexOf('<button class="primary-button" id="completeChallenge">'));
+ const html=fs.readFileSync('index.html','utf8');const start=html.indexOf('<section id="nutritionChallenge"');const screen=html.slice(start,html.indexOf('</section>',start));
  assert.ok(screen.includes('id="validateNutrition"'));assert.ok(screen.includes('id="clearNutrition"'));
  assert.ok(!screen.includes('<input'));assert.ok(!screen.includes('kcal'));assert.ok(!screen.includes('compteur'));
 });
