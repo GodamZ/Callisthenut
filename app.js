@@ -505,7 +505,7 @@ function renderChallenge(){
   run:{description:'Une sortie d’au moins quinze minutes pour prendre l’air et faire avancer ton aventure.',instructions:['Prépare ton parcours et démarre progressivement.','Cours pendant au moins 15 minutes à une allure confortable, en alternant avec la marche si besoin.','Une fois ta sortie terminée, reviens la valider ici.']},
   bike:{description:'Traverse la vallée à vélo avec une sortie d’au moins trente minutes.',instructions:['Prépare ton vélo et choisis un itinéraire adapté.','Roule pendant au moins 30 minutes selon tes capacités.','À la fin de ta sortie, valide ton défi pour recevoir ton XP.']},
   shadowboxing:{description:'Une séance de boxe classique ou de boxe en réalité virtuelle avec FitXR, pendant au moins 15 minutes. Le mode FitXR tient compte de ta référence personnelle : 456 kcal sur 45 minutes, avec les squats déjà inclus.',instructions:['Choisis le mode FitXR pour tes séances VR ou le mode classique pour de la boxe dans le vide.','Suis ta séance et renseigne sa durée réelle, échauffement et récupération inclus.','Si FitXR affiche un total calorique, saisis-le : il remplace l’estimation pour cette séance. Les squats de la séance ne sont pas ajoutés une seconde fois.','Sans valeur déclarée, le mode FitXR utilise 456 kcal pour 45 minutes, ajustées à la durée. Cette référence personnelle et les chiffres de FitXR restent des estimations ; la durée seule ne reflète pas toutes les variations d’intensité.']},
-  bedtime:{description:'Déclare ton coucher pour le soir concerné. Ce défi reste disponible chaque jour.',instructions:['Aucune heure de réveil à renseigner.','Renseigne ton coucher réel, y compris le lendemain matin. Une seule déclaration est possible par nuit.','Le jeu accorde 40 XP pour un coucher jusqu’à minuit inclus, sans calories. Seul un coucher déclaré après minuit retire 10 XP. Sans déclaration : aucune pénalité.']},
+  bedtime:{description:'Déclare ton coucher pour le soir concerné. Ce défi reste disponible chaque jour.',instructions:['Aucune heure de réveil à renseigner.','Valide au moment de te coucher : la date et l’heure du clic sont enregistrées automatiquement. Une seule validation par nuit.','Le jeu accorde 40 XP pour un coucher jusqu’à minuit inclus, sans calories. Seul un coucher déclaré après minuit retire 10 XP. Sans déclaration : aucune pénalité.']},
   nutrition:{description:'Valide simplement ce défi si tu considères avoir mangé sans excès aujourd’hui.',instructions:['Si ta journée est sans excès, utilise le bouton de validation : la ligne sera cochée sur l’accueil.','Si tu as fait des excès, laisse le défi non validé. Tu peux aussi retirer une validation si ta journée change.','Ce défi ne demande aucun comptage de calories et ne retire aucun XP.']},
   water:{description:'Prends soin de ton hydratation tout au long de la journée, selon tes besoins et ton objectif personnel.',instructions:['Définis une cible d’hydratation adaptée à tes besoins.','Répartis tes boissons au fil de la journée.','Valide seulement lorsque ton objectif personnel est atteint.']}
  }[q.id];
@@ -617,18 +617,23 @@ function recordBedtime(night,actual,now=new Date()){
  else toast(result.late?`Coucher après minuit : ${change} XP.`:'Coucher enregistré : aucune perte d’XP.');
  return change;
 }
+function currentBedtime(now=new Date()){
+ const dates=sleepDates(now);
+ return {night:now.getHours()<12?dates.yesterday:dates.today,actual:`${dates.today}T${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`};
+}
+function recordBedtimeNow(now=new Date()){
+ const {night,actual}=currentBedtime(now);
+ return recordBedtime(night,actual,now);
+}
 function renderBedtime(){
- const dates=sleepDates();
- const night=document.querySelector('#sleepNight');night.min=dates.yesterday;night.max=dates.today;
- if(![dates.today,dates.yesterday].includes(night.value))night.value=new Date().getHours()<12?dates.yesterday:dates.today;
- const record=state.rpg.days[night.value]?.bedtime;
+ const record=state.rpg.days[currentBedtime().night]?.bedtime;
  document.querySelector('#saveBedtime').disabled=!!record;
  document.querySelector('#bedtimeResult').textContent=record?`Coucher déclaré : ${record.actual.replace('T',' à ')} · ${record.xp>0?'+':''}${record.xp} XP. Une seule déclaration par nuit.`:'Aucun coucher déclaré pour cette nuit. Sans saisie, aucun XP ne sera retiré.';
 }
 document.querySelector('#bedtimeForm').addEventListener('submit',event=>{
- event.preventDefault();try{recordBedtime(document.querySelector('#sleepNight').value,document.querySelector('#sleepActual').value);document.querySelector('#bedtimeError').textContent=''}catch(error){document.querySelector('#bedtimeError').textContent=error.message}
+ event.preventDefault();try{recordBedtimeNow();document.querySelector('#bedtimeError').textContent=''}catch(error){document.querySelector('#bedtimeError').textContent=error.message}
 });
-document.querySelector('#sleepNight').addEventListener('change',renderBedtime);
+
 
 function activityEnergyToday(){
  return state.history.filter(h=>h.date===dateKey()).reduce((total,h)=>{

@@ -600,3 +600,22 @@ test('missing an assigned mini-challenge uses the ordinary penalty without addin
   assert.equal(run('state.rpg.days["2020-01-02"].selected.length'),0);
  }finally{run(`Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
 });
+
+
+test('bedtime click records local time, assigns the night and prevents duplicate rewards',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:100,days:{},ledger:[]};settleDays()');
+  const night=run('sleepDates().yesterday');
+  run('(()=>{const now=new Date();now.setHours(0,1,35,0);recordBedtimeNow(now)})()');
+  assert.equal(run(`state.rpg.days[${JSON.stringify(night)}].bedtime.actual`),run('dateKey()+"T00:01"'));
+  assert.equal(run('state.rpg.xp'),90);
+  assert.throws(()=>run('(()=>{const now=new Date();now.setHours(1,0,0,0);recordBedtimeNow(now)})()'));
+  assert.equal(run('state.rpg.xp'),90);
+  run('(()=>{const now=new Date();now.setHours(23,15,0,0);recordBedtimeNow(now)})()');
+  assert.equal(run('state.rpg.days[dateKey()].bedtime.actual'),run('dateKey()+"T23:15"'));
+  assert.equal(run('state.rpg.days[dateKey()].claims.bedtime.xp'),40);
+  const html=fs.readFileSync('index.html','utf8');
+  assert.ok(!html.includes('id="sleepActual"'));assert.ok(!html.includes('id="sleepNight"'));
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
