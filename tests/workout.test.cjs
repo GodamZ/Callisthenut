@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const elements=new Map();
 function element(id){
+ if(['#sleepWake','#sleepHours','#sleepAdvice','#sleepSettingsForm'].includes(id))return null;
  if(!elements.has(id)){
   const classes=new Set(),listeners={};
   elements.set(id,{textContent:'',innerHTML:'',value:'',style:{setProperty(){}},

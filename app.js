@@ -240,7 +240,7 @@ function navigateTo(target,updateHash=true){
 }
 function openChallenge(id,updateHash=true){
  if(!QUESTS.some(q=>q.id===id)){navigateTo('today',updateHash);return}
- activeQuest=id;settleDays();if(id==='bedtime'){document.querySelector('#sleepWake').value=sleepTarget().wake;document.querySelector('#sleepHours').value=sleepTarget().hours}renderChallenge();navigateTo('challenge',updateHash);
+ activeQuest=id;settleDays();renderChallenge();navigateTo('challenge',updateHash);
 }
 function routeFromHash(){
  const route=window.location?.hash?.slice(1)||'today';
@@ -505,7 +505,7 @@ function renderChallenge(){
   run:{description:'Une sortie d’au moins quinze minutes pour prendre l’air et faire avancer ton aventure.',instructions:['Prépare ton parcours et démarre progressivement.','Cours pendant au moins 15 minutes à une allure confortable, en alternant avec la marche si besoin.','Une fois ta sortie terminée, reviens la valider ici.']},
   bike:{description:'Traverse la vallée à vélo avec une sortie d’au moins trente minutes.',instructions:['Prépare ton vélo et choisis un itinéraire adapté.','Roule pendant au moins 30 minutes selon tes capacités.','À la fin de ta sortie, valide ton défi pour recevoir ton XP.']},
   shadowboxing:{description:'Une séance de boxe classique ou de boxe en réalité virtuelle avec FitXR, pendant au moins 15 minutes. Le mode FitXR tient compte de ta référence personnelle : 456 kcal sur 45 minutes, avec les squats déjà inclus.',instructions:['Choisis le mode FitXR pour tes séances VR ou le mode classique pour de la boxe dans le vide.','Suis ta séance et renseigne sa durée réelle, échauffement et récupération inclus.','Si FitXR affiche un total calorique, saisis-le : il remplace l’estimation pour cette séance. Les squats de la séance ne sont pas ajoutés une seconde fois.','Sans valeur déclarée, le mode FitXR utilise 456 kcal pour 45 minutes, ajustées à la durée. Cette référence personnelle et les chiffres de FitXR restent des estimations ; la durée seule ne reflète pas toutes les variations d’intensité.']},
-  bedtime:{description:'Prépare une nuit reposante avec des heures de coucher et de réveil régulières. Ce défi reste disponible chaque jour.',instructions:['L’OMS conseille des horaires réguliers, sans fixer une heure universelle de coucher pour les adultes.','Repère adulte complémentaire : les NIH indiquent généralement 7 à 9 heures de sommeil. Le conseil ci-dessous réserve une durée choisie avant ton réveil ; ce n’est pas une mesure du sommeil réel.','Renseigne ton coucher réel pour le soir concerné, y compris le lendemain matin. Une seule déclaration est possible par nuit.','Le jeu accorde 40 XP si tu respectes l’heure conseillée, sans calories. Un coucher plus tardif mais au plus tard à minuit ne retire aucun XP. Seul un coucher déclaré après minuit retire 10 XP. Sans déclaration : aucune pénalité.']},
+  bedtime:{description:'Déclare ton coucher pour le soir concerné. Ce défi reste disponible chaque jour.',instructions:['Aucune heure de réveil à renseigner.','Renseigne ton coucher réel, y compris le lendemain matin. Une seule déclaration est possible par nuit.','Le jeu accorde 40 XP pour un coucher jusqu’à minuit inclus, sans calories. Seul un coucher déclaré après minuit retire 10 XP. Sans déclaration : aucune pénalité.']},
   nutrition:{description:'Valide simplement ce défi si tu considères avoir mangé sans excès aujourd’hui.',instructions:['Si ta journée est sans excès, utilise le bouton de validation : la ligne sera cochée sur l’accueil.','Si tu as fait des excès, laisse le défi non validé. Tu peux aussi retirer une validation si ta journée change.','Ce défi ne demande aucun comptage de calories et ne retire aucun XP.']},
   water:{description:'Prends soin de ton hydratation tout au long de la journée, selon tes besoins et ton objectif personnel.',instructions:['Définis une cible d’hydratation adaptée à tes besoins.','Répartis tes boissons au fil de la journée.','Valide seulement lorsque ton objectif personnel est atteint.']}
  }[q.id];
@@ -514,7 +514,7 @@ function renderChallenge(){
  document.querySelector('#challengeDescription').textContent=details.description;
  document.querySelector('#challengeStatus').textContent=done?'DÉFI ACCOMPLI':q.mandatory?'DÉFI OBLIGATOIRE DU JOUR':'TA PROCHAINE MISSION';
  document.querySelector('#challengeMetrics').hidden=q.id==='nutrition';
- document.querySelector('#challengeTarget').textContent=q.mandatory?`${q.reps} répétitions`:q.id==='nutrition'?'Déclaration du jour':q.id==='bedtime'?sleepTarget().label:q.id==='water'?'Cible personnelle':q.id==='workout'?`${state.duration} min`:`${q.minutes} min`;
+ document.querySelector('#challengeTarget').textContent=q.mandatory?`${q.reps} répétitions`:q.id==='nutrition'?'Déclaration du jour':q.id==='bedtime'?'Au plus tard à minuit':q.id==='water'?'Cible personnelle':q.id==='workout'?`${state.duration} min`:`${q.minutes} min`;
  const calories=q.id==='workout'?estimatedCalories():questCalories(q);
  document.querySelector('#challengeXp').textContent=q.id==='nutrition'?'Validation simple':`+${questXp(q,calories)} XP`;
  document.querySelector('#challengeCalories').textContent=q.id==='nutrition'?'—':q.mandatory?'Non estimées':`≈ ${calories} kcal`;
@@ -588,19 +588,9 @@ document.querySelector('#shadowCalories').addEventListener('input',()=>{
  updateChallengeDuration();
 });
 
-function sleepTarget(){
- const settings=state.sleepSettings||{wake:'07:00',hours:8};
- const [hour,minute]=settings.wake.split(':').map(Number);
- const minutes=((hour*60+minute-settings.hours*60)%1440+1440)%1440;
- return {minutes,label:`${String(Math.floor(minutes/60)).padStart(2,'0')}:${String(minutes%60).padStart(2,'0')}`,wake:settings.wake,hours:settings.hours};
-}
 function sleepDates(now=new Date()){
  const previous=new Date(now);previous.setDate(previous.getDate()-1);
  return {today:dateKey(now),yesterday:dateKey(previous)};
-}
-function saveSleepSettings(wake,hours){
- if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(wake)||![7,8,9].includes(Number(hours)))throw Error('Indique une heure de réveil et une durée de 7, 8 ou 9 heures.');
- state.sleepSettings={wake,hours:Number(hours)};saveState();renderChallenge();
 }
 function evaluateBedtime(night,actual,now=new Date()){
  const {today,yesterday}=sleepDates(now);
@@ -610,9 +600,7 @@ function evaluateBedtime(night,actual,now=new Date()){
  end.setDate(end.getDate()+1);
  if(!Number.isFinite(at.getTime())||at>now||at<start||at>=end)throw Error('Le coucher doit être passé et correspondre au soir choisi ou au lendemain matin (avant midi).');
  const midnight=new Date(`${night}T00:00`);midnight.setDate(midnight.getDate()+1);
- const target=sleepTarget(),deadline=new Date(`${night}T${target.label}`);
- if(target.minutes<720)deadline.setDate(deadline.getDate()+1);
- return {late:at>midnight,success:at<=midnight&&at<=deadline,target:target.label};
+ return {late:at>midnight,success:at<=midnight,target:'00:00'};
 }
 function recordBedtime(night,actual,now=new Date()){
  const result=evaluateBedtime(night,actual,now);settleDays();
@@ -625,24 +613,18 @@ function recordBedtime(night,actual,now=new Date()){
  state.rpg.xp+=change;
  state.rpg.ledger.push({day:night,xp:change,label:result.late?'Coucher après minuit':result.success?'Se coucher tôt':'Coucher avant minuit · sans pénalité'});
  saveState();render();navigateTo('today');
- if(change>0)showActivityReward('Se coucher tôt',change,`Coucher du ${night} enregistré · heure conseillée respectée · aucune calorie ajoutée.`,before);
+ if(change>0)showActivityReward('Se coucher tôt',change,`Coucher du ${night} enregistré · coucher au plus tard à minuit · aucune calorie ajoutée.`,before);
  else toast(result.late?`Coucher après minuit : ${change} XP.`:'Coucher enregistré : aucune perte d’XP.');
  return change;
 }
 function renderBedtime(){
- const target=sleepTarget(),dates=sleepDates();
- document.querySelector('#sleepAdvice').textContent=`Pour un réveil à ${target.wake} et ${target.hours} h réservées au sommeil : coucher conseillé vers ${target.label}. Adapte ce repère à tes besoins ; le temps au lit n’est pas la durée réellement dormie.`;
+ const dates=sleepDates();
  const night=document.querySelector('#sleepNight');night.min=dates.yesterday;night.max=dates.today;
  if(![dates.today,dates.yesterday].includes(night.value))night.value=new Date().getHours()<12?dates.yesterday:dates.today;
- const wake=document.querySelector('#sleepWake'),hours=document.querySelector('#sleepHours');
- if(!wake.value)wake.value=target.wake;if(!hours.value)hours.value=target.hours;
  const record=state.rpg.days[night.value]?.bedtime;
  document.querySelector('#saveBedtime').disabled=!!record;
  document.querySelector('#bedtimeResult').textContent=record?`Coucher déclaré : ${record.actual.replace('T',' à ')} · ${record.xp>0?'+':''}${record.xp} XP. Une seule déclaration par nuit.`:'Aucun coucher déclaré pour cette nuit. Sans saisie, aucun XP ne sera retiré.';
 }
-document.querySelector('#sleepSettingsForm').addEventListener('submit',event=>{
- event.preventDefault();try{saveSleepSettings(document.querySelector('#sleepWake').value,document.querySelector('#sleepHours').value);document.querySelector('#bedtimeError').textContent=''}catch(error){document.querySelector('#bedtimeError').textContent=error.message}
-});
 document.querySelector('#bedtimeForm').addEventListener('submit',event=>{
  event.preventDefault();try{recordBedtime(document.querySelector('#sleepNight').value,document.querySelector('#sleepActual').value);document.querySelector('#bedtimeError').textContent=''}catch(error){document.querySelector('#bedtimeError').textContent=error.message}
 });
