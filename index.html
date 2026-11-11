@@ -8,8 +8,8 @@
   <title>Callisthenut</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=34">
-  <link rel="stylesheet" href="theme.css?v=34">
+  <link rel="stylesheet" href="styles.css?v=35">
+  <link rel="stylesheet" href="theme.css?v=35">
 </head>
 <body>
   <div class="app-shell">
@@ -84,7 +84,6 @@
 
       <section class="view" id="progressView" data-view="progress">
         <div class="page-heading"><p class="eyebrow">PROGRESSION</p><h1>Ton journal d’aventure.</h1><p>Tout est enregistré uniquement sur cet appareil.</p></div>
-        <section class="milestone-card"><p class="eyebrow">CAP SUR LE NIVEAU 20</p><h2>Aventurier accompli</h2><p>Un jalon de régularité dans le jeu, pas une mesure de santé. Aucun niveau ne garantit d’être en bonne santé.</p><p>Repères adultes : 150 à 300 minutes d’activité modérée par semaine (ou 75 à 150 minutes soutenues), et du renforcement au moins 2 jours par semaine. Adapte les quêtes et le repos à tes capacités.</p><a href="https://www.who.int/europe/news-room/fact-sheets/item/physical-activity" target="_blank" rel="noopener">Consulter les repères de l’OMS ↗</a><p>De LVL 1 à 99 : 500 × (niveau − 1) + 50 × (niveau − 1)² XP cumulés. Le niveau 2 demande 550 XP et le niveau 20 demande 27 550 XP. À environ 180–200 XP par journée réussie, compte 3 à 4 journées pour le premier niveau. Ton XP reste conservée ; ton niveau est calculé avec cette nouvelle courbe.</p></section><section class="section-block"><h2>Les récompenses de la guilde</h2><div id="xpLedger"></div></section>
         <div class="stat-grid">
           <article class="stat-card dark"><small>SÉRIE ACTUELLE</small><strong><span id="progressStreak">0</span> j</strong><p>Continue demain.</p></article>
           <article class="stat-card"><small>SÉANCES</small><strong id="totalSessions">0</strong><p>terminées</p></article>
@@ -94,13 +93,13 @@
         <section class="section-block weight-card" aria-labelledby="weightTitle">
           <p class="eyebrow">SUIVI PERSONNEL</p><h2 id="weightTitle">Poids</h2>
           <p id="weightSummary" aria-live="polite"></p>
-          <form id="weightForm" class="compact-form"><label>Date<input id="weightDate" type="date" required></label><label>Poids (kg)<input id="weightMeasure" type="number" min="35" max="250" step="0.1" inputmode="decimal" placeholder="Ex. 70,5" required></label><button class="primary-button">Enregistrer</button></form>
+          <form id="weightForm" class="compact-form"><label class="weight-field"><span class="weight-field-caption"><span aria-hidden="true">◷</span> Date de la mesure</span><input id="weightDate" type="date" required></label><label class="weight-field"><span class="weight-field-caption"><span aria-hidden="true">◇</span> Mon poids</span><span class="weight-input-wrap"><input id="weightMeasure" type="number" min="35" max="250" step="0.1" inputmode="decimal" placeholder="70,5" required><span class="weight-unit" aria-hidden="true">kg</span></span><span class="sr-only">En kilogrammes</span></label><button class="primary-button">Enregistrer <span aria-hidden="true">＋</span></button></form>
           <p class="field-help">Une mesure par jour : une nouvelle saisie à la même date remplace la précédente. La mesure la plus récente sert à estimer les calories.</p>
           <p id="weightError" role="alert"></p><div id="weightChart"></div>
           <details id="weightHistory"><summary>Historique des mesures</summary><div id="weightEntries"></div></details>
         </section>
         <section class="section-block"><div class="section-heading"><div><p class="eyebrow">4 DERNIÈRES SEMAINES</p><h2>Régularité</h2></div></div><div class="activity-grid" id="activityGrid"></div></section>
-        <section class="section-block"><div class="section-heading"><div><p class="eyebrow">DERNIÈRES MISSIONS</p><h2>Historique</h2></div></div><div class="history-list" id="historyList"></div></section>
+        <details class="milestone-card progress-info"><summary>Cap sur le niveau 20</summary><p class="eyebrow">CAP SUR LE NIVEAU 20</p><h2>Aventurier accompli</h2><p>Un jalon de régularité dans le jeu, pas une mesure de santé. Aucun niveau ne garantit d’être en bonne santé.</p><p>Repères adultes : 150 à 300 minutes d’activité modérée par semaine (ou 75 à 150 minutes soutenues), et du renforcement au moins 2 jours par semaine. Adapte les quêtes et le repos à tes capacités.</p><a href="https://www.who.int/europe/news-room/fact-sheets/item/physical-activity" target="_blank" rel="noopener">Consulter les repères de l’OMS ↗</a><p>De LVL 1 à 99 : 500 × (niveau − 1) + 50 × (niveau − 1)² XP cumulés. Le niveau 2 demande 550 XP et le niveau 20 demande 27 550 XP. À environ 180–200 XP par journée réussie, compte 3 à 4 journées pour le premier niveau. Ton XP reste conservée ; ton niveau est calculé avec cette nouvelle courbe.</p></details>
       </section>
 
       <section class="view" id="menuView" data-view="menu">
@@ -200,9 +199,9 @@
   </dialog>
   <dialog id="questSuccess" class="quest-success"><div class="victory-star" aria-hidden="true">✦</div><p class="eyebrow">VICTOIRE !</p><h2 id="questRewardTitle"></h2><strong id="questReward" class="xp-reward"></strong><p id="questRewardDetail"></p><p id="questLevelUp"></p><div class="reward-experience" id="questXpAnimation" hidden><div class="reward-xp-heading"><strong id="questAnimatedLevel">LVL 01</strong><span id="questAnimatedXpLabel"></span></div><div class="reward-bar"><progress id="questAnimatedXp" max="100" value="0" aria-label="Expérience gagnée vers le prochain niveau"></progress><span class="xp-shine" aria-hidden="true"></span></div><p class="level-celebration" id="questLevelCelebration" role="status" aria-live="polite" hidden></p></div><button id="closeQuestSuccess" class="primary-button">Revenir aux défis →</button></dialog>
   <div class="toast" id="toast" role="status"></div>
-  <script src="exercise-catalog.js?v=34"></script>
-  <script src="workout-planner.js?v=34"></script>
-  <script src="app.js?v=34"></script>
-  <script src="health.js?v=34"></script>
+  <script src="exercise-catalog.js?v=35"></script>
+  <script src="workout-planner.js?v=35"></script>
+  <script src="app.js?v=35"></script>
+  <script src="health.js?v=35"></script>
 </body>
 </html>

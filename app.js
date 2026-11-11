@@ -156,7 +156,8 @@ function renderProgress(){
   document.querySelector('#totalCalories').textContent=state.history.reduce((n,h)=>n+(h.calories??estimatedCalories(PROGRAM.find(p=>p.title===h.title)||PROGRAM[0],h.minutes)),0);
   const days=Array.from({length:28},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(27-i));return d});
   document.querySelector('#activityGrid').innerHTML=days.map(d=>`<span class="activity-cell ${state.history.some(h=>h.date===dateKey(d))?'active':''} ${dateKey(d)===dateKey()?'today':''}" title="${d.toLocaleDateString('fr-FR')}"></span>`).join('');
-  document.querySelector('#historyList').innerHTML=state.history.length?state.history.slice().reverse().slice(0,6).map(h=>`<div class="history-item"><div><strong>${escapeHtml(h.title)}</strong><small>${new Date(h.date+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}${h.rounds!==undefined?` · ${h.rounds} tours`:''}${h.source==='manual'?' · Saisie manuelle':''}</small></div><span>${h.minutes} min · ${h.estimated===false?'':'≈ '}${h.calories??estimatedCalories(PROGRAM.find(p=>p.title===h.title)||PROGRAM[0],h.minutes)} kcal</span></div>`).join(''):'<div class="empty-state">Ta première mission apparaîtra ici.</div>';
+  const historyList=document.querySelector('#historyList');
+  if(historyList)historyList.innerHTML=state.history.length?state.history.slice().reverse().slice(0,6).map(h=>`<div class="history-item"><div><strong>${escapeHtml(h.title)}</strong><small>${new Date(h.date+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}${h.rounds!==undefined?` · ${h.rounds} tours`:''}${h.source==='manual'?' · Saisie manuelle':''}</small></div><span>${h.minutes} min · ${h.estimated===false?'':'≈ '}${h.calories??estimatedCalories(PROGRAM.find(p=>p.title===h.title)||PROGRAM[0],h.minutes)} kcal</span></div>`).join(''):'<div class="empty-state">Ta première mission apparaîtra ici.</div>';
 }
 function getStreak(){let n=0,d=new Date();if(!state.history.some(h=>h.date===dateKey(d)))d.setDate(d.getDate()-1);while(state.history.some(h=>h.date===dateKey(d))){n++;d.setDate(d.getDate()-1)}return n}
 function weightMeasurements(){
@@ -511,7 +512,8 @@ function renderRpg(){
  document.querySelector('#activityCategories').innerHTML=orderedQuests.map(questRow).join('');
  if(activeQuest)renderChallenge();
  document.querySelector('#questChoices').innerHTML=QUESTS.map(q=>questForId(q.id)).map(q=>`<label><input type="checkbox" data-select-quest="${q.id}" ${q.permanent||day.selected.includes(q.id)?'checked':''} ${q.permanent||q.mandatory||day.selected.some(id=>day.claims[id])?'disabled':''}> ${q.mandatory?q.name+' · obligatoire':q.detail}</label>`).join('');
- document.querySelector('#xpLedger').innerHTML=state.rpg.ledger.slice(-10).reverse().map(e=>`<div class="history-item"><span>${e.day} · ${escapeHtml(e.label)}</span><strong>${e.xp>0?'+':''}${e.xp} XP</strong></div>`).join('')||'<p>Ton aventure commence aujourd’hui.</p>';
+ const xpLedger=document.querySelector('#xpLedger');
+ if(xpLedger)xpLedger.innerHTML=state.rpg.ledger.slice(-10).reverse().map(e=>`<div class="history-item"><span>${e.day} · ${escapeHtml(e.label)}</span><strong>${e.xp>0?'+':''}${e.xp} XP</strong></div>`).join('')||'<p>Ton aventure commence aujourd’hui.</p>';
 }
 document.querySelector('#questChoices').addEventListener('change',event=>{
  const id=event.target.dataset.selectQuest;if(!id)return;
