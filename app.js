@@ -271,6 +271,7 @@ function navigateTo(target,updateHash=true){
 }
 function openChallenge(id,updateHash=true){
  if(!QUESTS.some(q=>q.id===id)){navigateTo('today',updateHash);return}
+ if(activeQuest!==id)document.querySelector('#challengeMission').open=false;
  activeQuest=id;settleDays();renderChallenge();navigateTo('challenge',updateHash);
 }
 function routeFromHash(){
@@ -505,8 +506,9 @@ function renderRpg(){
   const detail=q.flexible&&done?`${day.claims[q.id].minutes??q.minutes} min réalisées · ≈ ${day.claims[q.id].calories} kcal`:q.detail;
   return `<button class="daily-challenge ${done?'completed':''}" data-open-quest="${q.id}" aria-label="${q.name}${done?' : terminé':''}"><span class="challenge-checkbox" aria-hidden="true">${done?'✓':''}</span><span class="daily-icon" aria-hidden="true">${q.icon}</span><span class="daily-text"><strong>${q.name}</strong><small>${detail}</small></span><span class="daily-xp">${reward}</span><span class="row-arrow" aria-hidden="true">›</span></button>`;
  };
- document.querySelector('#goalList').innerHTML=QUESTS.filter(q=>q.permanent||day.selected.includes(q.id)).map(questRow).join('');
- document.querySelector('#activityCategories').innerHTML=QUESTS.map(questRow).join('');
+ const orderedQuests=QUESTS.slice().sort((a,b)=>Number(b.id==='water')-Number(a.id==='water'));
+ document.querySelector('#goalList').innerHTML=orderedQuests.filter(q=>q.permanent||day.selected.includes(q.id)).map(questRow).join('');
+ document.querySelector('#activityCategories').innerHTML=orderedQuests.map(questRow).join('');
  if(activeQuest)renderChallenge();
  document.querySelector('#questChoices').innerHTML=QUESTS.map(q=>questForId(q.id)).map(q=>`<label><input type="checkbox" data-select-quest="${q.id}" ${q.permanent||day.selected.includes(q.id)?'checked':''} ${q.permanent||q.mandatory||day.selected.some(id=>day.claims[id])?'disabled':''}> ${q.mandatory?q.name+' · obligatoire':q.detail}</label>`).join('');
  document.querySelector('#xpLedger').innerHTML=state.rpg.ledger.slice(-10).reverse().map(e=>`<div class="history-item"><span>${e.day} · ${escapeHtml(e.label)}</span><strong>${e.xp>0?'+':''}${e.xp} XP</strong></div>`).join('')||'<p>Ton aventure commence aujourd’hui.</p>';
@@ -538,14 +540,14 @@ function renderChallenge(){
   shadowboxing:{description:'Une séance de boxe classique ou de boxe en réalité virtuelle avec FitXR, pendant au moins 15 minutes. Le mode FitXR tient compte de ta référence personnelle : 456 kcal sur 45 minutes, avec les squats déjà inclus.',instructions:['Choisis le mode FitXR pour tes séances VR ou le mode classique pour de la boxe dans le vide.','Suis ta séance et renseigne sa durée réelle, échauffement et récupération inclus.','Si FitXR affiche un total calorique, saisis-le : il remplace l’estimation pour cette séance. Les squats de la séance ne sont pas ajoutés une seconde fois.','Sans valeur déclarée, le mode FitXR utilise 456 kcal pour 45 minutes, ajustées à la durée. Cette référence personnelle et les chiffres de FitXR restent des estimations ; la durée seule ne reflète pas toutes les variations d’intensité.']},
   bedtime:{description:'Déclare ton coucher pour le soir concerné. Ce défi reste disponible chaque jour.',instructions:['Aucune heure de réveil à renseigner.','Valide au moment de te coucher : la date et l’heure du clic sont enregistrées automatiquement. Une seule validation par nuit.','Le jeu accorde 40 XP pour un coucher jusqu’à minuit inclus, sans calories. Seul un coucher déclaré après minuit retire 10 XP. Sans déclaration : aucune pénalité.']},
   nutrition:{description:'Valide simplement ce défi si tu considères avoir mangé sans excès aujourd’hui.',instructions:['Si ta journée est sans excès, utilise le bouton de validation : la ligne sera cochée sur l’accueil.','Si tu as fait des excès, laisse le défi non validé. Tu peux aussi retirer une validation si ta journée change.','Ce défi ne demande aucun comptage de calories et ne retire aucun XP.']},
-  water:{description:'Prends soin de ton hydratation tout au long de la journée, selon tes besoins et ton objectif personnel.',instructions:['Définis une cible d’hydratation adaptée à tes besoins.','Répartis tes boissons au fil de la journée.','Valide seulement lorsque ton objectif personnel est atteint.']}
+  water:{description:'Enregistre tes verres d’eau au fil de la journée : 10 verres de 15 cl pour atteindre 1,5 litre.',instructions:['Après avoir bu 15 cl, clique sur un verre vide.','Chaque verre rempli ajoute 15 cl au compteur du jour.','Au dixième verre, le défi est automatiquement validé et ton XP est accordée.']}
  }[q.id];
  document.querySelector('#challengeIcon').textContent=q.icon;
  document.querySelector('#challengeTitle').textContent=q.name;
  document.querySelector('#challengeDescription').textContent=details.description;
  document.querySelector('#challengeStatus').textContent=done?'DÉFI ACCOMPLI':q.mandatory?'DÉFI OBLIGATOIRE DU JOUR':'TA PROCHAINE MISSION';
  document.querySelector('#challengeMetrics').hidden=q.id==='nutrition';
- document.querySelector('#challengeTarget').textContent=q.mandatory?`${q.reps} répétitions`:q.id==='nutrition'?'Déclaration du jour':q.id==='bedtime'?'Au plus tard à minuit':q.id==='water'?'1,5 l ? 10 verres':q.id==='workout'?`${state.duration} min`:`${q.minutes} min`;
+ document.querySelector('#challengeTarget').textContent=q.mandatory?`${q.reps} répétitions`:q.id==='nutrition'?'Déclaration du jour':q.id==='bedtime'?'Au plus tard à minuit':q.id==='water'?'1,5 l · 10 verres':q.id==='workout'?`${state.duration} min`:`${q.minutes} min`;
  const calories=q.id==='workout'?estimatedCalories():questCalories(q);
  document.querySelector('#challengeXp').textContent=q.id==='nutrition'?'Validation simple':`+${questXp(q,calories)} XP`;
  document.querySelector('#challengeCalories').textContent=q.id==='nutrition'?'—':q.mandatory?'Non estimées':`≈ ${calories} kcal`;
@@ -589,10 +591,10 @@ function waterGlassesToday(){
 }
 function renderWater(animated=-1){
  const filled=waterGlassesToday(),count=filled.length;
- document.querySelector('#waterCounter').textContent=`${count} / 10 verres ? ${(count*0.15).toLocaleString('fr-FR',{maximumFractionDigits:2})} / 1,5 l${count===10?' ? D?fi accompli !':''}`;
+ document.querySelector('#waterCounter').textContent=`${count} / 10 verres · ${(count*0.15).toLocaleString('fr-FR',{maximumFractionDigits:2})} / 1,5 l${count===10?' · Défi accompli !':''}`;
  document.querySelector('#waterGlasses').innerHTML=Array.from({length:10},(_,i)=>{
   const full=filled.includes(i);
-  return `<button type="button" class="water-glass ${full?'is-full':''} ${i===animated?'just-filled':''}" data-water-glass="${i}" aria-label="Verre ${i+1} : ${full?'15 cl enregistr?s':'ajouter 15 cl'}" aria-pressed="${full}" ${full?'disabled':''}><span class="glass-vessel" aria-hidden="true"><span class="glass-water"></span><span class="glass-shine"></span></span><span class="glass-label">${i+1}<small>15 cl</small></span></button>`;
+  return `<button type="button" class="water-glass ${full?'is-full':''} ${i===animated?'just-filled':''}" data-water-glass="${i}" aria-label="Verre ${i+1} : ${full?'15 cl enregistrés':'ajouter 15 cl'}" aria-pressed="${full}" ${full?'disabled':''}><span class="glass-vessel" aria-hidden="true"><span class="glass-water"></span><span class="glass-shine"></span></span><span class="glass-label">${i+1}<small>15 cl</small></span></button>`;
  }).join('');
 }
 function fillWaterGlass(index){
@@ -601,7 +603,7 @@ function fillWaterGlass(index){
  const day=state.rpg.days[dateKey()],filled=waterGlassesToday();
  if(day.claims.water||filled.includes(index))return false;
  day.waterGlasses=[...filled,index];saveState();
- if(day.waterGlasses.length===10){claimQuest('water',0,false);toast('1,5 l atteint : d?fi valid? !')}
+ if(day.waterGlasses.length===10){claimQuest('water',0,false);toast('1,5 l atteint : défi validé !')}
  renderWater(index);return true;
 }
 document.querySelector('#waterGlasses').addEventListener('click',event=>{
