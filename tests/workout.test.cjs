@@ -1,4 +1,4 @@
-﻿const {test}=require('node:test');
+const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
@@ -244,7 +244,7 @@ test('home lists only daily challenges; opening a challenge does not validate it
   run('state.rpg={xp:0,days:{},ledger:[]};settleDays();render();openChallenge("water")');
   assert.equal(run('state.rpg.xp'),0);
   assert.equal(element('#challengeTitle').textContent,run('questForId("water").name'));
-  assert.equal(element('#completeChallenge').hidden,false);
+  assert.equal(element('#completeChallenge').hidden,true);
   assert.ok(element('#goalList').innerHTML.includes('data-open-quest="water"'));
   assert.ok(!element('#goalList').innerHTML.includes('data-open-quest="run"'));
   assert.ok(element('#activityCategories').innerHTML.includes('data-open-quest="run"'));
@@ -254,17 +254,44 @@ test('home lists only daily challenges; opening a challenge does not validate it
 test('challenge confirmation checks the home row, shows XP, and returns home without a duplicate reward',()=>{
  const saved=run('JSON.stringify(state)');
  try{
-  run('state.rpg={xp:0,days:{},ledger:[]};settleDays();openChallenge("water")');
+  run('state.rpg={xp:0,days:{},ledger:[]};settleDays();openChallenge("walk")');
   element('#completeChallenge').listeners.click();
-  assert.equal(run('state.rpg.xp'),40);
+  assert.equal(run('state.rpg.xp'),run('questXp(questForId("walk"))'));
   assert.equal(element('#questSuccess').open,true);
   assert.equal(element('[data-view="today"]').classList.contains('active'),true);
-  assert.ok(element('#goalList').innerHTML.includes(run('questForId("water").name')+' : terminé'));
+  assert.ok(element('#goalList').innerHTML.includes(run('questForId("walk").name')+' : terminé'));
   element('#closeQuestSuccess').listeners.click();assert.equal(element('#questSuccess').open,false);
-  run('openChallenge("water")');assert.equal(element('#completeChallenge').hidden,true);
-  element('#completeChallenge').listeners.click();assert.equal(run('state.rpg.xp'),40);
+  run('openChallenge("walk")');assert.equal(element('#completeChallenge').hidden,true);
+  element('#completeChallenge').listeners.click();assert.equal(run('state.rpg.xp'),run('questXp(questForId("walk"))'));
  }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
 });
+test('water glasses persist, count once, validate at 1.5 litres and reset on a new day',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.rpg={xp:0,days:{},ledger:[]};settleDays();openChallenge("water")');
+  assert.equal(element('#waterChallenge').hidden,false);
+  assert.equal((element('#waterGlasses').innerHTML.match(/data-water-glass=/g)||[]).length,10);
+  element('#completeChallenge').listeners.click();assert.equal(run('state.rpg.xp'),0);
+  assert.equal(run('fillWaterGlass(7)'),true);
+  assert.equal(run('fillWaterGlass(7)'),false);
+  assert.equal(run('fillWaterGlass(10)'),false);
+  assert.equal(run('loadState().rpg.days[dateKey()].waterGlasses.length'),1);
+  run('openChallenge("water")');assert.match(element('#waterCounter').textContent,/0,15/);
+  run('for(let i=0;i<9;i++)fillWaterGlass(i)');
+  assert.equal(run('waterGlassesToday().length'),9);
+  assert.equal(run('!!state.rpg.days[dateKey()].claims.water'),false);
+  run('fillWaterGlass(9)');
+  assert.equal(run('waterGlassesToday().length'),10);
+  assert.equal(run('state.rpg.xp'),40);
+  assert.match(element('#waterCounter').textContent,/1,5/);
+  assert.ok(element('#goalList').innerHTML.includes(run('questForId("water").name')+' : terminé'));
+  run('fillWaterGlass(9)');assert.equal(run('state.rpg.xp'),40);
+  run('state.rpg.days["2020-01-01"]={...state.rpg.days[dateKey()],settled:true};delete state.rpg.days[dateKey()];settleDays();renderWater()');
+  assert.equal(run('waterGlassesToday().length'),0);
+  assert.equal(run('state.rpg.days["2020-01-01"].waterGlasses.length'),10);
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+
 test('guided challenge screens expose only their own player and require session completion',()=>{
  const saved=run('JSON.stringify(state)');
  try{

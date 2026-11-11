@@ -287,7 +287,7 @@ window.addEventListener('pageshow',routeFromHash);
 document.querySelector('#completeChallenge').addEventListener('click',()=>{
  const q=QUESTS.find(q=>q.id===activeQuest);if(!q)return;
  // Guided activities are completed by the existing workout players.
- if(['workout','kettlebell'].includes(q.id))return;
+ if(['workout','kettlebell','water'].includes(q.id))return;
  try{
   const minutes=q.flexible?document.querySelector('#challengeDuration').value:q.minutes;
   const energy=q.id==='shadowboxing'?questCalorieDetails(q,minutes,document.querySelector('#shadowCalories').value):null;
@@ -545,7 +545,7 @@ function renderChallenge(){
  document.querySelector('#challengeDescription').textContent=details.description;
  document.querySelector('#challengeStatus').textContent=done?'DÉFI ACCOMPLI':q.mandatory?'DÉFI OBLIGATOIRE DU JOUR':'TA PROCHAINE MISSION';
  document.querySelector('#challengeMetrics').hidden=q.id==='nutrition';
- document.querySelector('#challengeTarget').textContent=q.mandatory?`${q.reps} répétitions`:q.id==='nutrition'?'Déclaration du jour':q.id==='bedtime'?'Au plus tard à minuit':q.id==='water'?'Cible personnelle':q.id==='workout'?`${state.duration} min`:`${q.minutes} min`;
+ document.querySelector('#challengeTarget').textContent=q.mandatory?`${q.reps} répétitions`:q.id==='nutrition'?'Déclaration du jour':q.id==='bedtime'?'Au plus tard à minuit':q.id==='water'?'1,5 l ? 10 verres':q.id==='workout'?`${state.duration} min`:`${q.minutes} min`;
  const calories=q.id==='workout'?estimatedCalories():questCalories(q);
  document.querySelector('#challengeXp').textContent=q.id==='nutrition'?'Validation simple':`+${questXp(q,calories)} XP`;
  document.querySelector('#challengeCalories').textContent=q.id==='nutrition'?'—':q.mandatory?'Non estimées':`≈ ${calories} kcal`;
@@ -553,13 +553,15 @@ function renderChallenge(){
  document.querySelector('#workoutChallenge').hidden=q.id!=='workout'||done;
  document.querySelector('#kettlebellChallenge').hidden=q.id!=='kettlebell'||done;
  const guided=['workout','kettlebell'].includes(q.id);
- document.querySelector('#outdoorChallenge').hidden=guided||done||!!q.permanent;
+ document.querySelector('#outdoorChallenge').hidden=guided||done||!!q.permanent||q.id==='water';
  document.querySelector('#bedtimeChallenge').hidden=q.id!=='bedtime';
  document.querySelector('#nutritionChallenge').hidden=q.id!=='nutrition';
+ document.querySelector('#waterChallenge').hidden=q.id!=='water';
+ if(q.id==='water')renderWater();
  if(q.id==='bedtime')renderBedtime();
  if(q.id==='nutrition')renderNutrition();
  document.querySelector('#challengeActionDescription').textContent=q.mandatory?`Effectue ${q.name.toLowerCase()}, puis confirme ici. Ce défi compte pour le bonus de journée et ne peut pas être retiré de ta liste.`:q.id==='water'?'Atteins ton objectif d’hydratation sur la journée, puis confirme ici.':`Réalise cette activité pendant ${q.minutes} minutes, puis confirme sa réalisation.`;
- document.querySelector('#completeChallenge').hidden=guided||done||!!q.permanent;
+ document.querySelector('#completeChallenge').hidden=guided||done||!!q.permanent||q.id==='water';
  document.querySelector('#completeChallenge').disabled=done;
  document.querySelector('#challengeDurationSection').hidden=!q.flexible;
  document.querySelector('#shadowBoxingOptions').hidden=q.id!=='shadowboxing';
@@ -579,6 +581,33 @@ function renderChallenge(){
  }
  document.querySelector('#challengeCompleteMessage').textContent=done?(q.id==='nutrition'?'✓ Journée déclarée sans excès. Ce défi est coché sur ton accueil.':'✓ Récompense obtenue. Ce défi est coché sur ton accueil.'):'';
 }
+
+function waterGlassesToday(){
+ const day=state.rpg.days[dateKey()];
+ if(day?.claims.water)return Array.from({length:10},(_,i)=>i);
+ return [...new Set(Array.isArray(day?.waterGlasses)?day.waterGlasses:[])].filter(i=>Number.isInteger(i)&&i>=0&&i<10);
+}
+function renderWater(animated=-1){
+ const filled=waterGlassesToday(),count=filled.length;
+ document.querySelector('#waterCounter').textContent=`${count} / 10 verres ? ${(count*0.15).toLocaleString('fr-FR',{maximumFractionDigits:2})} / 1,5 l${count===10?' ? D?fi accompli !':''}`;
+ document.querySelector('#waterGlasses').innerHTML=Array.from({length:10},(_,i)=>{
+  const full=filled.includes(i);
+  return `<button type="button" class="water-glass ${full?'is-full':''} ${i===animated?'just-filled':''}" data-water-glass="${i}" aria-label="Verre ${i+1} : ${full?'15 cl enregistr?s':'ajouter 15 cl'}" aria-pressed="${full}" ${full?'disabled':''}><span class="glass-vessel" aria-hidden="true"><span class="glass-water"></span><span class="glass-shine"></span></span><span class="glass-label">${i+1}<small>15 cl</small></span></button>`;
+ }).join('');
+}
+function fillWaterGlass(index){
+ if(activeQuest!=='water'||!Number.isInteger(index)||index<0||index>9)return false;
+ settleDays();
+ const day=state.rpg.days[dateKey()],filled=waterGlassesToday();
+ if(day.claims.water||filled.includes(index))return false;
+ day.waterGlasses=[...filled,index];saveState();
+ if(day.waterGlasses.length===10){claimQuest('water',0,false);toast('1,5 l atteint : d?fi valid? !')}
+ renderWater(index);return true;
+}
+document.querySelector('#waterGlasses').addEventListener('click',event=>{
+ const glass=event.target.closest('[data-water-glass]');
+ if(glass)fillWaterGlass(Number(glass.dataset.waterGlass));
+});
 
 function updateChallengeDuration(){
  const q=QUESTS.find(q=>q.id===activeQuest);if(!q?.flexible)return;

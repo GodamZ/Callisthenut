@@ -1,5 +1,5 @@
-const CACHE='callisthenut-v32';
-const ASSETS=['./','index.html','styles.css?v=32','theme.css?v=32','app.js?v=32','health.js?v=32','exercise-catalog.js?v=32','workout-planner.js?v=32','icon.svg','manifest.webmanifest','privacy.html',...Array.from({length:44},(_,i)=>`images/${26239+i*2}.jpg`)];
+const CACHE='callisthenut-v33';
+const ASSETS=['./','index.html','styles.css?v=33','theme.css?v=33','app.js?v=33','health.js?v=33','exercise-catalog.js?v=33','workout-planner.js?v=33','icon.svg','manifest.webmanifest','privacy.html',...Array.from({length:44},(_,i)=>`images/${26239+i*2}.jpg`)];
 self.addEventListener('install',event=>{self.skipWaiting();event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)))});
 self.addEventListener('activate',event=>event.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key))))])));
 self.addEventListener('fetch',event=>{if(event.request.method!=='GET')return;event.respondWith(fetch(event.request,{cache:'no-cache'}).then(response=>{if(response.ok){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(event.request,copy))}return response}).catch(()=>caches.match(event.request).then(cached=>cached||(event.request.mode==='navigate'?caches.match('./'):Response.error()))))});
