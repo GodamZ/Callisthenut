@@ -87,7 +87,7 @@ async function syncScreenWakeLock(){
 }
 
 function loadState(){
-  const base={name:'soldat',duration:15,level:1,weight:70,reminder:'18:30',sound:true,goals:{},history:[]};
+  const base={name:'soldat',duration:15,level:1,weight:70,weightHistory:[],reminder:'18:30',sound:true,goals:{},history:[]};
   try{return {...base,...JSON.parse(localStorage.getItem('callisthenut-state')||localStorage.getItem('callisterik-state')||'{}')}}catch{return base}
 }
 function saveState(){localStorage.setItem('callisthenut-state',JSON.stringify(state))}
@@ -150,6 +150,7 @@ function renderPlan(){
   document.querySelector('#planList').innerHTML=Array.from({length:7},(_,i)=>{const d=new Date(monday);d.setDate(d.getDate()+i);return programForDate(d,state.duration,state.planSeed)}).map((p,i)=>`<article class="plan-card ${i===todayIndex?'today':''}"><span class="plan-number">${String(i+1).padStart(2,'0')}</span><span class="plan-info"><strong>${p.title}</strong><small>${p.focus} · ${state.duration} min</small></span><span class="plan-status">${state.history.some(h=>{const d=new Date(monday);d.setDate(d.getDate()+i);return h.date===dateKey(d)})?'✓':i===todayIndex?'→':'·'}</span></article>`).join('');
 }
 function renderProgress(){
+  renderWeight();
   document.querySelector('#totalSessions').textContent=state.history.length;
   document.querySelector('#totalMinutes').textContent=Math.round(state.history.reduce((n,h)=>n+h.minutes,0)*10)/10;
   document.querySelector('#totalCalories').textContent=state.history.reduce((n,h)=>n+(h.calories??estimatedCalories(PROGRAM.find(p=>p.title===h.title)||PROGRAM[0],h.minutes)),0);
@@ -158,6 +159,36 @@ function renderProgress(){
   document.querySelector('#historyList').innerHTML=state.history.length?state.history.slice().reverse().slice(0,6).map(h=>`<div class="history-item"><div><strong>${escapeHtml(h.title)}</strong><small>${new Date(h.date+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}${h.rounds!==undefined?` · ${h.rounds} tours`:''}${h.source==='manual'?' · Saisie manuelle':''}</small></div><span>${h.minutes} min · ${h.estimated===false?'':'≈ '}${h.calories??estimatedCalories(PROGRAM.find(p=>p.title===h.title)||PROGRAM[0],h.minutes)} kcal</span></div>`).join(''):'<div class="empty-state">Ta première mission apparaîtra ici.</div>';
 }
 function getStreak(){let n=0,d=new Date();if(!state.history.some(h=>h.date===dateKey(d)))d.setDate(d.getDate()-1);while(state.history.some(h=>h.date===dateKey(d))){n++;d.setDate(d.getDate()-1)}return n}
+function weightMeasurements(){
+ return (Array.isArray(state.weightHistory)?state.weightHistory:[]).filter(m=>m&&/^\d{4}-\d{2}-\d{2}$/.test(m.date)&&Number.isFinite(m.weight)&&m.weight>=35&&m.weight<=250).slice().sort((a,b)=>a.date.localeCompare(b.date));
+}
+function recordWeight(date,weight){
+ const parsed=new Date(date+'T12:00:00');
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(parsed.getTime())||dateKey(parsed)!==date||date>dateKey()||!Number.isFinite(weight)||weight<35||weight>250)return false;
+ state.weightHistory=weightMeasurements().filter(m=>m.date!==date).concat({date,weight:Math.round(weight*10)/10}).sort((a,b)=>a.date.localeCompare(b.date));
+ state.weight=state.weightHistory[state.weightHistory.length-1].weight;
+ saveState();return true;
+}
+function renderWeight(){
+ const entries=weightMeasurements(),format=n=>n.toLocaleString('fr-FR',{maximumFractionDigits:1}),label=d=>new Date(d+'T12:00:00').toLocaleDateString('fr-FR');
+ document.querySelector('#weightDate').max=dateKey();
+ if(!document.querySelector('#weightDate').value)document.querySelector('#weightDate').value=dateKey();
+ const latest=entries[entries.length-1],delta=latest?Math.round((latest.weight-entries[0].weight)*10)/10:0;
+ document.querySelector('#weightSummary').textContent=latest?`${format(latest.weight)} kg · ${label(latest.date)}${entries.length>1?` · Évolution : ${delta>0?'+':''}${format(delta)} kg depuis la première mesure`:''}`:'Ajoute ta première mesure pour commencer ton suivi.';
+ document.querySelector('#weightEntries').innerHTML=entries.slice().reverse().map(m=>`<div class="history-item"><span>${label(m.date)}</span><strong>${format(m.weight)} kg</strong></div>`).join('');
+ document.querySelector('#weightHistory').hidden=!entries.length;
+ const chart=document.querySelector('#weightChart');
+ if(!latest){chart.innerHTML='<p class="empty-state">Ton évolution apparaîtra ici après ta première mesure.</p>';return}
+ const start=new Date(entries[0].date+'T12:00:00').getTime(),end=new Date(latest.date+'T12:00:00').getTime(),values=entries.map(m=>m.weight),low=Math.min(...values)-1,high=Math.max(...values)+1;
+ const points=entries.map(m=>({x:entries.length===1?320:60+(new Date(m.date+'T12:00:00').getTime()-start)/(end-start||1)*520,y:210-(m.weight-low)/(high-low)*180,...m}));
+ chart.innerHTML=`<svg viewBox="0 0 640 260" role="img" aria-labelledby="weightChartTitle weightChartDesc"><title id="weightChartTitle">Évolution du poids dans le temps</title><desc id="weightChartDesc">${entries.map(m=>`${label(m.date)} : ${format(m.weight)} kg`).join(' ; ')}</desc>${[low,(low+high)/2,high].map(v=>{const y=210-(v-low)/(high-low)*180;return `<line x1="60" y1="${y}" x2="580" y2="${y}" class="weight-grid"/><text x="50" y="${y+4}" text-anchor="end">${format(v)}</text>`}).join('')}<text x="60" y="15">kg</text><polyline points="${points.map(p=>`${p.x},${p.y}`).join(' ')}" class="weight-line"/>${points.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="5"><title>${label(p.date)} : ${format(p.weight)} kg</title></circle>`).join('')}<text x="60" y="244">${label(entries[0].date)}</text>${entries.length>1?`<text x="580" y="244" text-anchor="end">${label(latest.date)}</text>`:''}</svg>${entries.length===1?'<p class="field-help">Ajoute une mesure à une autre date pour tracer ton évolution.</p>':''}`;
+}
+document.querySelector('#weightForm').addEventListener('submit',event=>{
+ event.preventDefault();
+ const valid=recordWeight(document.querySelector('#weightDate').value,Number(document.querySelector('#weightMeasure').value));
+ document.querySelector('#weightError').textContent=valid?'':'Choisis une date valide, au plus tard aujourd’hui, et un poids entre 35 et 250 kg.';
+ if(valid){render();toast('Poids enregistré')}
+});
 function fillSettings(){nameInput.value=state.name==='soldat'?'':state.name;durationSelect.value=state.duration;levelSelect.value=state.level;weightInput.value=state.weight;reminderTime.value=state.reminder}
 function buildTimeline(program=todayProgram()){return timelineForProgram(program,EXERCISES)}
 function prepareAudio(){if(!audioContext)audioContext=new (window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume()}
@@ -289,7 +320,7 @@ document.querySelector('#openPreferences').addEventListener('click',()=>document
 document.querySelector('#openReminder').addEventListener('click',()=>document.querySelector('#settingsPanel').showModal());
 document.querySelector('#closeFinish').addEventListener('click',()=>{stopXpAnimation();document.querySelector('#finishScreen').close();render();navigateTo('today')});
 document.querySelector('#enableNotifications').addEventListener('click',async()=>{if(!('Notification'in window)){notificationStatus.textContent='Non disponible dans ce navigateur';return}const result=await Notification.requestPermission();notificationStatus.textContent=result==='granted'?'Rappel actif lorsque l’app est ouverte':'Notifications refusées';if(result==='granted')scheduleReminder()});
-document.querySelector('#saveSettings').addEventListener('click',()=>{state.name=nameInput.value.trim()||'soldat';state.duration=Number(durationSelect.value);state.level=Number(levelSelect.value);state.weight=Math.min(250,Math.max(35,Number(weightInput.value)||70));state.reminder=reminderTime.value;saveState();scheduleReminder();render();toast('Réglages enregistrés')});
+document.querySelector('#saveSettings').addEventListener('click',()=>{state.name=nameInput.value.trim()||'soldat';state.duration=Number(durationSelect.value);state.level=Number(levelSelect.value);const updatedWeight=Math.min(250,Math.max(35,Number(weightInput.value)||70));if(updatedWeight!==state.weight)recordWeight(dateKey(),updatedWeight);state.weight=updatedWeight;state.reminder=reminderTime.value;saveState();scheduleReminder();render();toast('Réglages enregistrés')});
 window.addEventListener('keydown',e=>{if(e.code==='Space'&&session){e.preventDefault();session.running=!session.running;updatePlayer()}});
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(registration=>registration.update()).catch(()=>{});
 render();updateSoundButton();scheduleReminder();

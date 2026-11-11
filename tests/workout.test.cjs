@@ -1,4 +1,4 @@
-const {test}=require('node:test');
+﻿const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
@@ -22,6 +22,25 @@ const context=vm.createContext({console,crypto:require('node:crypto').webcrypto,
 for(const match of fs.readFileSync('index.html','utf8').matchAll(/id="([^"]+)"/g))context[match[1]]=element('#'+match[1]);
 for(const file of ['exercise-catalog.js','workout-planner.js','app.js','health.js'])vm.runInContext(fs.readFileSync(file,'utf8'),context,{filename:file});
 const run=code=>vm.runInContext(code,context);
+
+test('weight tracking persists dated measurements, replaces duplicates and uses the latest weight',()=>{
+ const original=run('JSON.stringify(state)');
+ try{
+  run('state.weightHistory=[]');
+  assert.equal(run('recordWeight("2026-01-10",72.5)'),true);
+  assert.equal(run('recordWeight("2026-01-01",74)'),true);
+  assert.equal(run('state.weight'),72.5);
+  assert.equal(run('recordWeight("2026-01-10",72.2)'),true);
+  assert.equal(run('state.weightHistory.length'),2);
+  assert.equal(run('loadState().weightHistory[1].weight'),72.2);
+  for(const code of ['recordWeight("2026-02-30",70)','recordWeight("2099-01-01",70)','recordWeight("2026-01-01",NaN)','recordWeight("2026-01-01",0)'])assert.equal(run(code),false);
+  run('renderWeight()');
+  assert.match(element('#weightChart').innerHTML,/polyline/);
+  assert.match(element('#weightSummary').textContent,/-1,8 kg/);
+  run('state.weightHistory=[];renderWeight()');
+  assert.match(element('#weightChart').innerHTML,/première mesure/);
+ }finally{run(`Object.assign(state,JSON.parse(${JSON.stringify(original)}));saveState()`)}
+});
 test('all catalogue records have unique IDs, guidance and available pictures',()=>{
  const catalog=run('CATALOG');assert.equal(new Set(catalog.map(e=>e.id)).size,catalog.length);
  for(const e of catalog){assert.equal(e.steps.length,3,e.id);assert.ok(e.themes.length);if(e.image)assert.ok(fs.existsSync(e.image),e.image);if(e.pair)assert.equal(catalog.filter(x=>x.pair===e.pair).length,2,e.id)}
@@ -619,3 +638,4 @@ test('bedtime click records local time, assigns the night and prevents duplicate
   assert.ok(!html.includes('id="sleepActual"'));assert.ok(!html.includes('id="sleepNight"'));
  }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
 });
+

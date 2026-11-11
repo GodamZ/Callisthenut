@@ -8,8 +8,8 @@
   <title>Callisthenut</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=31">
-  <link rel="stylesheet" href="theme.css?v=31">
+  <link rel="stylesheet" href="styles.css?v=32">
+  <link rel="stylesheet" href="theme.css?v=32">
 </head>
 <body>
   <div class="app-shell">
@@ -89,6 +89,14 @@
           <article class="stat-card"><small>MINUTES</small><strong id="totalMinutes">0</strong><p>en mouvement</p></article>
           <article class="stat-card"><small>ÉNERGIE ESTIMÉE</small><strong id="totalCalories">0</strong><p>kcal brûlées</p></article>
         </div>
+        <section class="section-block weight-card" aria-labelledby="weightTitle">
+          <p class="eyebrow">SUIVI PERSONNEL</p><h2 id="weightTitle">Poids</h2>
+          <p id="weightSummary" aria-live="polite"></p>
+          <form id="weightForm" class="compact-form"><label>Date<input id="weightDate" type="date" required></label><label>Poids (kg)<input id="weightMeasure" type="number" min="35" max="250" step="0.1" inputmode="decimal" placeholder="Ex. 70,5" required></label><button class="primary-button">Enregistrer</button></form>
+          <p class="field-help">Une mesure par jour : une nouvelle saisie à la même date remplace la précédente. La mesure la plus récente sert à estimer les calories.</p>
+          <p id="weightError" role="alert"></p><div id="weightChart"></div>
+          <details id="weightHistory"><summary>Historique des mesures</summary><div id="weightEntries"></div></details>
+        </section>
         <section class="section-block"><div class="section-heading"><div><p class="eyebrow">4 DERNIÈRES SEMAINES</p><h2>Régularité</h2></div></div><div class="activity-grid" id="activityGrid"></div></section>
         <section class="section-block"><div class="section-heading"><div><p class="eyebrow">DERNIÈRES MISSIONS</p><h2>Historique</h2></div></div><div class="history-list" id="historyList"></div></section>
       </section>
@@ -190,9 +198,9 @@
   </dialog>
   <dialog id="questSuccess" class="quest-success"><div class="victory-star" aria-hidden="true">✦</div><p class="eyebrow">VICTOIRE !</p><h2 id="questRewardTitle"></h2><strong id="questReward" class="xp-reward"></strong><p id="questRewardDetail"></p><p id="questLevelUp"></p><div class="reward-experience" id="questXpAnimation" hidden><div class="reward-xp-heading"><strong id="questAnimatedLevel">LVL 01</strong><span id="questAnimatedXpLabel"></span></div><div class="reward-bar"><progress id="questAnimatedXp" max="100" value="0" aria-label="Expérience gagnée vers le prochain niveau"></progress><span class="xp-shine" aria-hidden="true"></span></div><p class="level-celebration" id="questLevelCelebration" role="status" aria-live="polite" hidden></p></div><button id="closeQuestSuccess" class="primary-button">Revenir aux défis →</button></dialog>
   <div class="toast" id="toast" role="status"></div>
-  <script src="exercise-catalog.js?v=31"></script>
-  <script src="workout-planner.js?v=31"></script>
-  <script src="app.js?v=31"></script>
-  <script src="health.js?v=31"></script>
+  <script src="exercise-catalog.js?v=32"></script>
+  <script src="workout-planner.js?v=32"></script>
+  <script src="app.js?v=32"></script>
+  <script src="health.js?v=32"></script>
 </body>
 </html>
