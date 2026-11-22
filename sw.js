@@ -1,4 +1,4 @@
-const CACHE='callisthenut-v36';
+const CACHE='callisthenut-v37';
 const ASSETS=['./','index.html','styles.css?v=36','theme.css?v=36','app.js?v=36','quest-corrections.js?v=36','health.js?v=36','exercise-catalog.js?v=36','workout-planner.js?v=36','icon.svg','manifest.webmanifest','privacy.html',...Array.from({length:44},(_,i)=>`images/${26239+i*2}.jpg`)];
 self.addEventListener('install',event=>{self.skipWaiting();event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)))});
 self.addEventListener('activate',event=>event.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key))))])));
