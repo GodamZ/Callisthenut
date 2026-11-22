@@ -100,6 +100,7 @@ function completeDailyWorkout(){
  if(!h.minutes){document.querySelector("#finishXp").textContent="0 XP";return}
  const previous=heroLevel();
  const id=h.title.toLowerCase().includes('kettlebell')?'kettlebell':'workout';
+ h.questId=id;
  const reward=claimQuest(id,h.calories,false);
  document.querySelector('#finishXp').textContent=reward?`+${reward} XP${heroLevel()>previous?" · LVL "+heroLevel()+" !":""}`:'Quête déjà récompensée aujourd’hui';
 }
@@ -282,6 +283,7 @@ function routeFromHash(){
 document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>navigateTo(b.dataset.target)));
 document.addEventListener('click',event=>{
  const route=event.target.closest('[data-screen]');if(route)navigateTo(route.dataset.screen);
+ const toggle=event.target.closest('[data-toggle-quest]');if(toggle){toggleDailyQuest(toggle.dataset.toggleQuest);return}
  const challenge=event.target.closest('[data-open-quest]');if(challenge)openChallenge(challenge.dataset.openQuest);
 });
 window.addEventListener('hashchange',routeFromHash);
@@ -464,19 +466,23 @@ function questXp(q,calories,minutes=q.minutes){return questBaseXp(q,minutes)+Mat
 function claimQuest(id,calories,show=true,duration,calorieSource){
  settleDays();const day=state.rpg.days[dateKey()],q=questForId(id);
  if(!q||q.permanent||day.claims[id])return 0;
- const minutes=questMinutes(q,duration??q.minutes);
- const details=q.mandatory?{calories:0,source:'repetitions'}:questCalorieDetails(q,minutes,calories),beforeXp=state.rpg.xp,energy=details.calories;
+ if(day.undone?.[id])return toggleDailyQuest(id);
+ const fromSteps=id==='walk'&&calorieSource==='steps';
+ const minutes=fromSteps?0:questMinutes(q,duration??q.minutes);
+ const details=fromSteps?{calories:0,source:'steps'}:q.mandatory?{calories:0,source:'repetitions'}:questCalorieDetails(q,minutes,calories),beforeXp=state.rpg.xp,energy=details.calories;
  const source=calorieSource??details.source;
- let gain=questXp(q,energy,minutes);day.claims[id]={xp:gain,calories:energy,minutes,calorieSource:source,...(q.mandatory?{reps:q.reps,exercise:q.exercise}:{})};
+ let gain=fromSteps?q.xp:questXp(q,energy,minutes);day.claims[id]={xp:gain,calories:energy,minutes,calorieSource:source,...(q.mandatory?{reps:q.reps,exercise:q.exercise}:{})};
  if(!day.selected.includes(id))day.selected.push(id);
  state.goals[dateKey()]=Object.keys(day.claims);
  let bonus=0;
- if(!day.bonus&&day.selected.filter(id=>!QUESTS.find(q=>q.id===id)?.permanent).every(id=>day.claims[id])){bonus=80;gain+=bonus;day.bonus=true}
+ if(!day.bonus&&day.selected.filter(id=>!QUESTS.find(q=>q.id===id)?.permanent).every(id=>day.claims[id])){bonus=day.bonusRefund??80;gain+=bonus;day.bonus=true;delete day.bonusRefund}
  state.rpg.xp=Math.min(xpThreshold(99),state.rpg.xp+gain);
  gain=state.rpg.xp-beforeXp;
+ day.claims[id].awardedXp=Math.min(day.claims[id].xp,gain);
+ if(bonus)day.bonusXp=Math.max(0,gain-day.claims[id].awardedXp);
  pendingXpReward={from:beforeXp,to:state.rpg.xp};
  state.rpg.ledger.push({day:dateKey(),xp:gain,label:q.name});
- if(show&&(q.minutes||q.mandatory))state.history.push({id:Date.now(),date:dateKey(),title:q.mandatory?q.name:q.flexible?`${q.name}${q.id==='shadowboxing'&&source.startsWith('fitxr')?' VR · FitXR':''} · ${minutes} min`:q.detail,minutes,calories:energy,calorieSource:source,...(q.mandatory?{reps:q.reps}: {})});
+ if(show&&(q.minutes||q.mandatory))state.history.push({id:crypto.randomUUID(),questId:id,date:dateKey(),title:q.mandatory?q.name:q.flexible?`${q.name}${q.id==='shadowboxing'&&source.startsWith('fitxr')?' VR · FitXR':''} · ${minutes} min`:q.detail,minutes,calories:energy,calorieSource:source,...(q.mandatory?{reps:q.reps}: {})});
  saveState();render();
  if(show){
   navigateTo('today');
@@ -498,17 +504,19 @@ function renderRpg(){
  document.querySelector('#xpLabel').textContent=level===99?'Niveau maximum atteint':`${Math.floor(displayXp)-floor} / ${next-floor} XP`;
  document.querySelector('#heroXp').value=level===99?100:(displayXp-floor)/(next-floor)*100;
  document.querySelector('#dayReward').textContent=day.bonus?'✦ Bonus de journée obtenu : +80 XP':'✦ Termine tes quêtes choisies : +80 XP';
- document.querySelector('#goalScore').textContent=`${day.selected.filter(id=>day.claims[id]).length}/${day.selected.length}`;
+ syncFreeActivities(day);saveState();
+ const visibleIds=[...visibleDailyQuests(day).map(q=>q.id),...Object.keys(day.freeActivities)];
+ document.querySelector('#goalScore').textContent=`${visibleIds.filter(id=>day.claims[id]).length}/${visibleIds.length}`;
  const questRow=(q)=>{
   q=questForId(q.id);
   const done=!!day.claims[q.id];
   const sleep=q.id==='bedtime'?day.bedtime:null;
   const reward=done?'ACCOMPLI':q.id==='nutrition'?'À VALIDER':sleep?(sleep.late?'APRÈS MINUIT':'RENSEIGNÉ'):`+${questXp(q)} XP`;
   const detail=q.flexible&&done?`${day.claims[q.id].minutes??q.minutes} min réalisées · ≈ ${day.claims[q.id].calories} kcal`:q.detail;
-  return `<button class="daily-challenge ${done?'completed':''}" data-open-quest="${q.id}" aria-label="${q.name}${done?' : terminé':''}"><span class="challenge-checkbox" aria-hidden="true">${done?'✓':''}</span><span class="daily-icon" aria-hidden="true">${q.icon}</span><span class="daily-text"><strong>${q.name}</strong><small>${detail}</small></span><span class="daily-xp">${reward}</span><span class="row-arrow" aria-hidden="true">›</span></button>`;
+  return `<div class="quest-line">${correctionButton(q.id,q.name,done)}<button class="daily-challenge ${done?'completed':''}" data-open-quest="${q.id}" aria-label="${q.name}${done?' : terminé':''}"><span class="daily-icon" aria-hidden="true">${q.icon}</span><span class="daily-text"><strong>${q.name}</strong><small>${detail}</small></span><span class="daily-xp">${reward}</span><span class="row-arrow" aria-hidden="true">›</span></button></div>`;
  };
  const orderedQuests=QUESTS.slice().sort((a,b)=>Number(b.id==='water')-Number(a.id==='water'));
- document.querySelector('#goalList').innerHTML=orderedQuests.filter(q=>q.permanent||day.selected.includes(q.id)).map(questRow).join('');
+ document.querySelector('#goalList').innerHTML=orderedQuests.filter(q=>q.permanent||day.selected.includes(q.id)).map(questRow).join('')+renderFreeActivities(day);
  document.querySelector('#activityCategories').innerHTML=orderedQuests.map(questRow).join('');
  if(activeQuest)renderChallenge();
  document.querySelector('#questChoices').innerHTML=QUESTS.map(q=>questForId(q.id)).map(q=>`<label><input type="checkbox" data-select-quest="${q.id}" ${q.permanent||day.selected.includes(q.id)?'checked':''} ${q.permanent||q.mandatory||day.selected.some(id=>day.claims[id])?'disabled':''}> ${q.mandatory?q.name+' · obligatoire':q.detail}</label>`).join('');
@@ -614,6 +622,12 @@ document.querySelector('#waterGlasses').addEventListener('click',event=>{
 });
 
 function updateChallengeDuration(){
+ if(activeQuest==='walk'&&state.rpg.days[dateKey()]?.claims.walk?.calorieSource==='steps'){
+  document.querySelector('#challengeTarget').textContent='Plus de 6 000 pas';
+  document.querySelector('#challengeCalories').textContent='Non estimées';
+  document.querySelector('#challengeDurationSection').hidden=true;
+  return;
+ }
  const q=QUESTS.find(q=>q.id===activeQuest);if(!q?.flexible)return;
  const value=document.querySelector('#challengeDuration').value;
  const done=!!state.rpg.days[dateKey()]?.claims[q.id];

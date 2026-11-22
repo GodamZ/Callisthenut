@@ -16,16 +16,16 @@ function activityInput(data){
  if(![2.5,5,8].includes(met))throw Error('Choisis une intensité.');
  const calories=raw===''?Math.round(met*3.5*state.weight/200*minutes):Number(raw);
  if(!Number.isFinite(calories)||calories<0||calories>10000)throw Error('Les calories doivent être comprises entre 0 et 10 000.');
- return {name,minutes,calories:Math.round(calories),estimated:raw===''};
+ return {name,minutes,met,calories:Math.round(calories),estimated:raw===''};
 }
 function recordActivity(data){
  const activity=activityInput(data);settleDays();
  const beforeXp=state.rpg.xp;
- const day=dateKey(),used=state.history.filter(h=>h.date===day&&h.source==='manual').reduce((sum,h)=>sum+(h.xp||0),0);
+ const day=dateKey(),used=state.history.filter(h=>h.date===day&&h.source==='manual').reduce((sum,h)=>sum+(h.xp||0),0)+Object.entries(state.rpg.days[day].undone||{}).filter(([id])=>id.startsWith('free:')).reduce((sum,[,e])=>sum+(e.claim.xp||0),0);
  // A shared daily allowance prevents farming XP by splitting one activity.
  const proposed=Math.min(160,Math.floor(activity.minutes*2)+Math.floor(activity.calories/5));
  const gain=Math.min(proposed,Math.max(0,200-used),xpThreshold(99)-state.rpg.xp);
- state.history.push({id:crypto.randomUUID(),date:day,title:activity.name,minutes:activity.minutes,calories:activity.calories,estimated:activity.estimated,source:'manual',xp:gain});
+ state.history.push({id:crypto.randomUUID(),date:day,title:activity.name,minutes:activity.minutes,calories:activity.calories,estimated:activity.estimated,met:activity.met,source:'manual',xp:gain});
  state.rpg.xp+=gain;state.rpg.ledger.push({day,xp:gain,label:activity.name});saveState();render();renderHealth();
  showActivityReward(activity.name,gain,`${activity.minutes} min · ${activity.estimated?'≈ ':''}${activity.calories} kcal · Récompenses des activités libres : maximum 200 XP par jour.`,beforeXp);
  return gain;
@@ -48,7 +48,7 @@ function updateSteps(day,count,source){
 }
 function stepTotal(entry){return entry?.source?entry[entry.source]||0:0}
 function validateWalkFromSteps(){
- if(stepTotal(healthState().steps[dateKey()])<=6000||state.rpg.days[dateKey()]?.claims.walk)return;
+ if(state.rpg.days[dateKey()]?.undone?.walk||stepTotal(healthState().steps[dateKey()])<=6000||state.rpg.days[dateKey()]?.claims.walk)return;
  claimQuest('walk',0,false,undefined,'steps');
 }
 function setStepGoal(value){
@@ -126,6 +126,16 @@ document.querySelector('#manualActivityForm').addEventListener('submit',event=>{
  event.preventDefault();const form=event.currentTarget;
  try{recordActivity({name:form.elements.activityName.value,minutes:form.elements.activityMinutes.value,met:form.elements.activityIntensity.value,calories:form.elements.activityCalories.value});form.reset();document.querySelector('#activityError').textContent=''}catch(error){document.querySelector('#activityError').textContent=error.message}
 });
+function updateActivityEstimate(){
+ const fields=document.querySelector('#manualActivityForm').elements;
+ if(!fields)return;
+ const minutes=Number(fields.activityMinutes.value),met=Number(fields.activityIntensity.value);
+ const override=fields.activityCalories.value.trim();
+ document.querySelector('#activityEstimate').textContent=override!==''?`Calories déclarées : ${override} kcal.`:
+  Number.isFinite(minutes)&&minutes>0&&minutes<=1440?`Estimation : ≈ ${Math.round(met*3.5*state.weight/200*minutes)} kcal, pour ${minutes} min à ${state.weight} kg.`:'Renseigne une durée pour estimer les calories.';
+}
+document.querySelector('#manualActivityForm').addEventListener('input',updateActivityEstimate);
+document.querySelector('#manualActivityForm').addEventListener('change',updateActivityEstimate);
 document.querySelector('#manualStepsForm').addEventListener('submit',event=>{
  event.preventDefault();
  try{updateSteps(dateKey(),Number(event.currentTarget.elements.manualSteps.value),'manual');toast('Total de pas enregistré.')}catch(error){document.querySelector('#healthStatus').textContent=error.message}

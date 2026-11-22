@@ -20,8 +20,54 @@ const context=vm.createContext({console,crypto:require('node:crypto').webcrypto,
   document:{querySelector:element,querySelectorAll:()=>[],addEventListener(){}},
   window:{addEventListener(){}},navigator:{},setInterval:()=>1,clearInterval(){},setTimeout:()=>1,clearTimeout(){},scrollTo(){}});
 for(const match of fs.readFileSync('index.html','utf8').matchAll(/id="([^"]+)"/g))context[match[1]]=element('#'+match[1]);
-for(const file of ['exercise-catalog.js','workout-planner.js','app.js','health.js'])vm.runInContext(fs.readFileSync(file,'utf8'),context,{filename:file});
+for(const file of ['exercise-catalog.js','workout-planner.js','quest-corrections.js','app.js','health.js'])vm.runInContext(fs.readFileSync(file,'utf8'),context,{filename:file});
 const run=code=>vm.runInContext(code,context);
+
+test('daily count includes permanent quests and named free activities, with reversible saved rewards',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.health={steps:{},goal:6000};state.rpg={xp:0,days:{},ledger:[]};state.history=[];settleDays();state.rpg.days[dateKey()].selected=["water","daily-strength"];claimQuest("water",0,false);claimQuest("daily-strength",0,false);setNutritionCompleted(true)');
+  assert.equal(element('#goalScore').textContent,'3/4');
+  const initialXp=run('state.rpg.xp');
+  run('recordActivity({name:"Natation <test>",minutes:30,met:5})');
+  assert.equal(element('#goalScore').textContent,'4/5');
+  assert.ok(element('#goalList').innerHTML.includes('Natation &lt;test&gt;'));
+  const after=run('state.rpg.xp');const id=run('Object.keys(state.rpg.days[dateKey()].freeActivities)[0]');
+  run(`toggleDailyQuest(${JSON.stringify(id)})`);
+  assert.equal(run('state.rpg.xp'),initialXp);assert.equal(run('state.history.length'),0);
+  assert.equal(element('#goalScore').textContent,'3/5');
+  run(`Object.assign(state,loadState());toggleDailyQuest(${JSON.stringify(id)})`);
+  assert.equal(run('state.rpg.xp'),after);assert.equal(run('state.history.length'),1);
+  run(`toggleDailyQuest(${JSON.stringify(id)});toggleDailyQuest(${JSON.stringify(id)})`);
+  assert.equal(run('state.rpg.xp'),after);assert.equal(run('state.history.length'),1);
+  run('toggleDailyQuest("water")');assert.equal(run('state.rpg.days[dateKey()].bonus'),false);
+  assert.equal(run('waterGlassesToday().length'),0);
+  run('toggleDailyQuest("water")');assert.equal(run('state.rpg.xp'),after);
+  run('toggleDailyQuest("nutrition")');assert.equal(element('#goalScore').textContent,'3/5');
+  run('toggleDailyQuest("nutrition")');assert.equal(element('#goalScore').textContent,'4/5');
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+test('free activity intensity estimates vary and manual corrections reserve the daily XP allowance',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.health={steps:{},goal:6000};state.rpg={xp:0,days:{},ledger:[]};state.history=[];state.weight=70;settleDays()');
+  const values=[2.5,5,8].map(met=>run(`activityInput({name:"Sport",minutes:30,met:${met}}).calories`));
+  assert.deepEqual(values,[92,184,294]);
+  run('recordActivity({name:"A",minutes:60,met:8})');
+  const id=run('Object.keys(state.rpg.days[dateKey()].freeActivities)[0]');
+  run(`toggleDailyQuest(${JSON.stringify(id)});recordActivity({name:"B",minutes:60,met:8});toggleDailyQuest(${JSON.stringify(id)})`);
+  assert.equal(run('state.rpg.xp'),200);
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
+test('undoing auto-walk stays unchecked across synchronization and manual redo restores once',()=>{
+ const saved=run('JSON.stringify(state)');
+ try{
+  run('state.health={steps:{},goal:6000};state.rpg={xp:0,days:{},ledger:[]};state.history=[];settleDays();updateSteps(dateKey(),7000,"manual");toggleDailyQuest("walk");updateSteps(dateKey(),8000,"health-connect")');
+  assert.equal(run('!!state.rpg.days[dateKey()].claims.walk'),false);
+  assert.equal(run('state.rpg.xp'),0);
+  run('toggleDailyQuest("walk");renderHealth()');assert.equal(run('state.rpg.xp'),45);
+ }finally{run(`activeQuest=null;Object.assign(state,JSON.parse(${JSON.stringify(saved)}));saveState();render()`)}
+});
 
 test('weight tracking persists dated measurements, replaces duplicates and uses the latest weight',()=>{
  const original=run('JSON.stringify(state)');
